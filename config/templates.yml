@@ -1,0 +1,55 @@
+# individual templates available for distribution
+templates:
+  codeql:
+    source: workflows/codeql.yml
+    destination: .github/workflows/codeql.yml
+
+  grass-manual:
+    source: workflows/grass-manual.yml
+    destination: .github/workflows/grass-manual.yml
+
+  grass-test:
+    source: workflows/grass-test.yml
+    destination: .github/workflows/grass-test.yml
+
+  linting:
+    source: workflows/linting.yml
+    destination: .github/workflows/linting.yml
+
+  post-pr-reviews:
+    source: workflows/post-pr-reviews.yml
+    destination: .github/workflows/post-pr-reviews.yml
+
+  python-publish:
+    source: workflows/python-publish.yml
+    destination: .github/workflows/python-publish.yml
+
+  python-test-publish:
+    source: workflows/python-test-publish.yml
+    destination: .github/workflows/python-test-publish.yml
+
+  sbom-vulnerability-scan:
+    source: workflows/sbom-vulnerability-scan.yml
+    destination: .github/workflows/sbom-vulnerability-scan.yml
+
+  third-party-licenses:
+    source: workflows/third-party-licenses.yml
+    destination: .github/workflows/third-party-licenses.yml
+
+# collections of templates
+profiles:
+  security:
+    - codeql
+    - sbom-vulnerability-scan
+
+  quality:
+    - linting
+    - post-pr-reviews
+
+  python-publishing:
+    - python-publish
+    - python-test-publish
+
+  grass:
+    - grass-manual
+    - grass-test

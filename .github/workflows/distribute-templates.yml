@@ -1,0 +1,90 @@
+
+name: Distribute repository templates
+
+on:
+  workflow_dispatch:
+    inputs:
+      repositories:
+        description: "Repositories (owner/repo, separated by spaces)"
+        required: true
+        type: string
+
+      mode:
+        description: "Template selection mode"
+        required: true
+        default: auto
+        type: choice
+        options:
+          - auto
+          - manual
+
+      templates:
+        description: "Individual templates (comma-separated)"
+        required: false
+        type: string
+
+      profiles:
+        description: "Template profiles (comma-separated)"
+        required: false
+        type: string
+
+      apply:
+        description: "Create pull requests (unchecked = dry run)"
+        required: true
+        default: false
+        type: boolean
+
+jobs:
+  distribute-templates:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout distributer
+        uses: actions/checkout@v4
+
+      - name: Checkout templates
+        uses: actions/checkout@v4
+        with:
+          repository: TaniaGithub0401/github-templates
+          ref: add-shared-templates
+          path: templates-source
+
+      - name: Install Multi-Gitter
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/lindell/multi-gitter/master/install.sh | sh
+
+      - name: Install Python dependencies
+        run: python3 -m pip install PyYAML
+
+      - name: Distribute templates
+        env:
+          GITHUB_TOKEN: ${{ secrets.MULTI_GITTER_TOKEN }}
+          TEMPLATES_DIR: ${{ github.workspace }}/templates-source/templates
+          REPOSITORIES: ${{ inputs.repositories }}
+          TEMPLATE_MODE: ${{ inputs.mode }}
+          SELECTED_TEMPLATES: ${{ inputs.templates }}
+          SELECTED_PROFILES: ${{ inputs.profiles }}
+          APPLY_CHANGES: ${{ inputs.apply }}
+        shell: bash
+        run: |
+          read -r -a REPO_ARGS <<< "$REPOSITORIES"
+
+          ARGS=()
+
+          if [[ "$APPLY_CHANGES" == "true" ]]; then
+            ARGS+=(--apply)
+          else
+            ARGS+=(--dry-run)
+          fi
+
+          if [[ "$TEMPLATE_MODE" == "manual" ]]; then
+            if [[ -n "$SELECTED_TEMPLATES" ]]; then
+              ARGS+=(--templates "$SELECTED_TEMPLATES")
+            fi
+
+            if [[ -n "$SELECTED_PROFILES" ]]; then
+              ARGS+=(--profiles "$SELECTED_PROFILES")
+            fi
+          fi
+
+          ./scripts/run_sync.sh "${ARGS[@]}" "${REPO_ARGS[@]}"
