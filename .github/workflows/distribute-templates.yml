@@ -54,7 +54,7 @@ jobs:
           curl -fsSL https://raw.githubusercontent.com/lindell/multi-gitter/master/install.sh | sh
 
       - name: Install Python dependencies
-        run: python3 -m pip install PyYAML
+        run: python3 -m pip install -r requirements.txt
 
       - name: Distribute templates
         env:

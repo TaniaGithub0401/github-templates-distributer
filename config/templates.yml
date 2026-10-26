@@ -30,11 +30,21 @@ templates:
 
   sbom-vulnerability-scan:
     source: workflows/sbom-vulnerability-scan.yml
-    destination: .github/workflows/sbom-vulnerability-scan.yml
+    detect_by: mundialis/github-workflows/.github/workflows/sbom-vulnerability-scan.yml
+    dependency_inputs:
+      - dockerfile
+      - requirements
+      - pyproject
+    preserve_inputs:
+      - dependency-track-project-name
 
   third-party-licenses:
     source: workflows/third-party-licenses.yml
-    destination: .github/workflows/third-party-licenses.yml
+    detect_by: mundialis/github-workflows/.github/workflows/third-party-licenses.yml
+    dependency_inputs:
+      - dockerfile
+      - requirements
+      - pyproject
 
 # collections of templates
 profiles:
