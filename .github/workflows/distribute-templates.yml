@@ -1,4 +1,3 @@
-
 name: Distribute repository templates
 
 on:
@@ -12,21 +11,88 @@ on:
       mode:
         description: "Template selection mode"
         required: true
-        default: auto
+        default: manual
         type: choice
         options:
-          - auto
           - manual
+          - auto
 
-      templates:
-        description: "Individual templates (comma-separated)"
-        required: false
-        type: string
+      # Template profiles
+      profile_general:
+        description: "General: CodeQL, SBOM, Third-Party Licenses"
+        type: boolean
+        default: false
 
-      profiles:
-        description: "Template profiles (comma-separated)"
-        required: false
-        type: string
+      profile_grass:
+        description: "GRASS: General + GRASS Manual + Linting"
+        type: boolean
+        default: false
+
+      profile_python:
+        description: "Python: General + Linting"
+        type: boolean
+        default: false
+
+      profile_quality:
+        description: "Quality: Linting + Post PR Reviews"
+        type: boolean
+        default: false
+
+      profile_python_publishing:
+        description: "Python Publishing: Publish + Test Publish"
+        type: boolean
+        default: false
+
+      profile_grass_testing:
+        description: "GRASS Testing: GRASS Test"
+        type: boolean
+        default: false
+
+      # Individual templates
+      template_codeql:
+        description: "Template: CodeQL"
+        type: boolean
+        default: false
+
+      template_sbom:
+        description: "Template: SBOM Vulnerability Scan"
+        type: boolean
+        default: false
+
+      template_licenses:
+        description: "Template: Third-Party Licenses"
+        type: boolean
+        default: false
+
+      template_grass_manual:
+        description: "Template: GRASS Manual"
+        type: boolean
+        default: false
+
+      template_grass_test:
+        description: "Template: GRASS Test"
+        type: boolean
+        default: false
+
+      template_linting:
+        description: "Template: Linting"
+        type: boolean
+        default: false
+
+      template_post_pr_reviews:
+        description: "Template: Post PR Reviews"
+        type: boolean
+        default: false
+
+      template_python_publish:
+        description: "Template: Python Publish"
+        type: boolean
+        default: false
+
+      template_python_test_publish:
+        description: "Template: Python Test Publish"
+        type: boolean
+        default: false
 
       apply:
         description: "Create pull requests (unchecked = dry run)"
@@ -62,14 +128,32 @@ jobs:
           TEMPLATES_DIR: ${{ github.workspace }}/templates-source/templates
           REPOSITORIES: ${{ inputs.repositories }}
           TEMPLATE_MODE: ${{ inputs.mode }}
-          SELECTED_TEMPLATES: ${{ inputs.templates }}
-          SELECTED_PROFILES: ${{ inputs.profiles }}
           APPLY_CHANGES: ${{ inputs.apply }}
+
+          PROFILE_GENERAL: ${{ inputs.profile_general }}
+          PROFILE_GRASS: ${{ inputs.profile_grass }}
+          PROFILE_PYTHON: ${{ inputs.profile_python }}
+          PROFILE_QUALITY: ${{ inputs.profile_quality }}
+          PROFILE_PYTHON_PUBLISHING: ${{ inputs.profile_python_publishing }}
+          PROFILE_GRASS_TESTING: ${{ inputs.profile_grass_testing }}
+
+          TEMPLATE_CODEQL: ${{ inputs.template_codeql }}
+          TEMPLATE_SBOM: ${{ inputs.template_sbom }}
+          TEMPLATE_LICENSES: ${{ inputs.template_licenses }}
+          TEMPLATE_GRASS_MANUAL: ${{ inputs.template_grass_manual }}
+          TEMPLATE_GRASS_TEST: ${{ inputs.template_grass_test }}
+          TEMPLATE_LINTING: ${{ inputs.template_linting }}
+          TEMPLATE_POST_PR_REVIEWS: ${{ inputs.template_post_pr_reviews }}
+          TEMPLATE_PYTHON_PUBLISH: ${{ inputs.template_python_publish }}
+          TEMPLATE_PYTHON_TEST_PUBLISH: ${{ inputs.template_python_test_publish }}
+
         shell: bash
         run: |
           read -r -a REPO_ARGS <<< "$REPOSITORIES"
 
           ARGS=()
+          SELECTED_PROFILES=()
+          SELECTED_TEMPLATES=()
 
           if [[ "$APPLY_CHANGES" == "true" ]]; then
             ARGS+=(--apply)
@@ -78,12 +162,39 @@ jobs:
           fi
 
           if [[ "$TEMPLATE_MODE" == "manual" ]]; then
-            if [[ -n "$SELECTED_TEMPLATES" ]]; then
-              ARGS+=(--templates "$SELECTED_TEMPLATES")
+
+            # Selected profiles
+            [[ "$PROFILE_GENERAL" == "true" ]] && SELECTED_PROFILES+=(general)
+            [[ "$PROFILE_GRASS" == "true" ]] && SELECTED_PROFILES+=(grass)
+            [[ "$PROFILE_PYTHON" == "true" ]] && SELECTED_PROFILES+=(python)
+            [[ "$PROFILE_QUALITY" == "true" ]] && SELECTED_PROFILES+=(quality)
+            [[ "$PROFILE_PYTHON_PUBLISHING" == "true" ]] && SELECTED_PROFILES+=(python-publishing)
+            [[ "$PROFILE_GRASS_TESTING" == "true" ]] && SELECTED_PROFILES+=(grass-testing)
+
+            # Selected individual templates
+            [[ "$TEMPLATE_CODEQL" == "true" ]] && SELECTED_TEMPLATES+=(codeql)
+            [[ "$TEMPLATE_SBOM" == "true" ]] && SELECTED_TEMPLATES+=(sbom-vulnerability-scan)
+            [[ "$TEMPLATE_LICENSES" == "true" ]] && SELECTED_TEMPLATES+=(third-party-licenses)
+            [[ "$TEMPLATE_GRASS_MANUAL" == "true" ]] && SELECTED_TEMPLATES+=(grass-manual)
+            [[ "$TEMPLATE_GRASS_TEST" == "true" ]] && SELECTED_TEMPLATES+=(grass-test)
+            [[ "$TEMPLATE_LINTING" == "true" ]] && SELECTED_TEMPLATES+=(linting)
+            [[ "$TEMPLATE_POST_PR_REVIEWS" == "true" ]] && SELECTED_TEMPLATES+=(post-pr-reviews)
+            [[ "$TEMPLATE_PYTHON_PUBLISH" == "true" ]] && SELECTED_TEMPLATES+=(python-publish)
+            [[ "$TEMPLATE_PYTHON_TEST_PUBLISH" == "true" ]] && SELECTED_TEMPLATES+=(python-test-publish)
+
+            if [[ ${#SELECTED_PROFILES[@]} -eq 0 && ${#SELECTED_TEMPLATES[@]} -eq 0 ]]; then
+              echo "Error: Select at least one profile or template in manual mode."
+              exit 1
             fi
 
-            if [[ -n "$SELECTED_PROFILES" ]]; then
-              ARGS+=(--profiles "$SELECTED_PROFILES")
+            if [[ ${#SELECTED_PROFILES[@]} -gt 0 ]]; then
+              PROFILES_CSV=$(IFS=,; echo "${SELECTED_PROFILES[*]}")
+              ARGS+=(--profiles "$PROFILES_CSV")
+            fi
+
+            if [[ ${#SELECTED_TEMPLATES[@]} -gt 0 ]]; then
+              TEMPLATES_CSV=$(IFS=,; echo "${SELECTED_TEMPLATES[*]}")
+              ARGS+=(--templates "$TEMPLATES_CSV")
             fi
           fi
 

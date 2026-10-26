@@ -45,6 +45,32 @@ def parse_selection(value):
     return {item.strip() for item in value.split(",") if item.strip()}
 
 
+def resolve_profile(name, profiles, visited=None):
+    """Resolve a profile and all its included profiles."""
+    if visited is None:
+        visited = set()
+
+    if name not in profiles:
+        raise ValueError(f"Unknown profile: {name}")
+
+    if name in visited:
+        raise ValueError(f"Circular profile dependency: {name}")
+
+    visited.add(name)
+
+    profile = profiles[name]
+    selected = set(profile.get("templates", []))
+
+    for included in profile.get("includes", []):
+        selected.update(
+            resolve_profile(included, profiles, visited)
+        )
+
+    visited.remove(name)
+
+    return selected
+
+
 def select_templates(config):
     """Resolve templates from manual selection or defaults."""
     mode = os.environ.get("TEMPLATE_MODE", "auto")
@@ -73,9 +99,9 @@ def select_templates(config):
     available_profiles = config.get("profiles", {})
 
     for profile in profiles:
-        if profile not in available_profiles:
-            raise ValueError(f"Unknown profile: {profile}")
-        selected.update(available_profiles[profile])
+        selected.update(
+            resolve_profile(profile, available_profiles)
+        )
 
     unknown = selected - config["templates"].keys()
     if unknown:

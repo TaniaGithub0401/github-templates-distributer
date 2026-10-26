@@ -48,18 +48,35 @@ templates:
 
 # collections of templates
 profiles:
-  security:
-    - codeql
-    - sbom-vulnerability-scan
-
-  quality:
-    - linting
-    - post-pr-reviews
-
-  python-publishing:
-    - python-publish
-    - python-test-publish
+  general:
+    templates:
+      - codeql
+      - sbom-vulnerability-scan
+      - third-party-licenses
 
   grass:
-    - grass-manual
-    - grass-test
+    includes:
+      - general
+    templates:
+      - grass-manual
+      - linting
+
+  python:
+    includes:
+      - general
+    templates:
+      - linting
+
+  quality:
+    templates:
+      - linting
+      - post-pr-reviews
+
+  python-publishing:
+    templates:
+      - python-publish
+      - python-test-publish
+
+  grass-testing:
+    templates:
+      - grass-test
