@@ -17,36 +17,19 @@ on:
           - manual
           - auto
 
-      # Template profiles
-      profile_general:
-        description: "General: CodeQL, SBOM, Third-Party Licenses"
-        type: boolean
-        default: false
-
-      profile_grass:
-        description: "GRASS: General + GRASS Manual + Linting"
-        type: boolean
-        default: false
-
-      profile_python:
-        description: "Python: General + Linting"
-        type: boolean
-        default: false
-
-      profile_quality:
-        description: "Quality: Linting + Post PR Reviews"
-        type: boolean
-        default: false
-
-      profile_python_publishing:
-        description: "Python Publishing: Publish + Test Publish"
-        type: boolean
-        default: false
-
-      profile_grass_testing:
-        description: "GRASS Testing: GRASS Test"
-        type: boolean
-        default: false
+      profile:
+        description: "Template profile (optional)"
+        required: true
+        default: "None - Individual templates only"
+        type: choice
+        options:
+          - "None - Individual templates only"
+          - "General - CodeQL, SBOM, Third-Party Licenses"
+          - "GRASS - CodeQL, SBOM, Third-Party Licenses, GRASS Manual, Linting"
+          - "Python - CodeQL, SBOM, Third-Party Licenses, Linting"
+          - "Quality - Linting, Post PR Reviews"
+          - "Python Publishing - Python Publish, Python Test Publish"
+          - "GRASS Testing - GRASS Test"
 
       # Individual templates
       template_codeql:
@@ -130,12 +113,7 @@ jobs:
           TEMPLATE_MODE: ${{ inputs.mode }}
           APPLY_CHANGES: ${{ inputs.apply }}
 
-          PROFILE_GENERAL: ${{ inputs.profile_general }}
-          PROFILE_GRASS: ${{ inputs.profile_grass }}
-          PROFILE_PYTHON: ${{ inputs.profile_python }}
-          PROFILE_QUALITY: ${{ inputs.profile_quality }}
-          PROFILE_PYTHON_PUBLISHING: ${{ inputs.profile_python_publishing }}
-          PROFILE_GRASS_TESTING: ${{ inputs.profile_grass_testing }}
+          SELECTED_PROFILE: ${{ inputs.profile }}
 
           TEMPLATE_CODEQL: ${{ inputs.template_codeql }}
           TEMPLATE_SBOM: ${{ inputs.template_sbom }}
@@ -163,13 +141,32 @@ jobs:
 
           if [[ "$TEMPLATE_MODE" == "manual" ]]; then
 
-            # Selected profiles
-            [[ "$PROFILE_GENERAL" == "true" ]] && SELECTED_PROFILES+=(general)
-            [[ "$PROFILE_GRASS" == "true" ]] && SELECTED_PROFILES+=(grass)
-            [[ "$PROFILE_PYTHON" == "true" ]] && SELECTED_PROFILES+=(python)
-            [[ "$PROFILE_QUALITY" == "true" ]] && SELECTED_PROFILES+=(quality)
-            [[ "$PROFILE_PYTHON_PUBLISHING" == "true" ]] && SELECTED_PROFILES+=(python-publishing)
-            [[ "$PROFILE_GRASS_TESTING" == "true" ]] && SELECTED_PROFILES+=(grass-testing)
+            case "$SELECTED_PROFILE" in
+              "None - Individual templates only")
+                ;;
+              "General - "*)
+                SELECTED_PROFILES+=(general)
+                ;;
+              "GRASS - "*)
+                SELECTED_PROFILES+=(grass)
+                ;;
+              "Python - "*)
+                SELECTED_PROFILES+=(python)
+                ;;
+              "Quality - "*)
+                SELECTED_PROFILES+=(quality)
+                ;;
+              "Python Publishing - "*)
+                SELECTED_PROFILES+=(python-publishing)
+                ;;
+              "GRASS Testing - "*)
+                SELECTED_PROFILES+=(grass-testing)
+                ;;
+              *)
+                echo "Error: Unknown profile: $SELECTED_PROFILE"
+                exit 1
+                ;;
+            esac
 
             # Selected individual templates
             [[ "$TEMPLATE_CODEQL" == "true" ]] && SELECTED_TEMPLATES+=(codeql)
