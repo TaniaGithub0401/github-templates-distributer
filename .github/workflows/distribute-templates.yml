@@ -18,7 +18,7 @@ on:
           - auto
 
       profile:
-        description: "Template profile (optional)"
+        description: "Select a profile and/or individual workflows below"
         required: true
         default: "None - Individual templates only"
         type: choice
@@ -31,49 +31,49 @@ on:
           - "Python Publishing - Python Publish, Python Test Publish"
           - "GRASS Testing - GRASS Test"
 
-      # Individual templates
+      # Individual workflow templates
       template_codeql:
-        description: "Template: CodeQL"
+        description: "Individual - CodeQL"
         type: boolean
         default: false
 
       template_sbom:
-        description: "Template: SBOM Vulnerability Scan"
+        description: "Individual - SBOM Vulnerability Scan"
         type: boolean
         default: false
 
       template_licenses:
-        description: "Template: Third-Party Licenses"
+        description: "Individual - Third-Party Licenses"
         type: boolean
         default: false
 
       template_grass_manual:
-        description: "Template: GRASS Manual"
+        description: "Individual - GRASS Manual"
         type: boolean
         default: false
 
       template_grass_test:
-        description: "Template: GRASS Test"
+        description: "Individual - GRASS Test"
         type: boolean
         default: false
 
       template_linting:
-        description: "Template: Linting"
+        description: "Individual - Linting"
         type: boolean
         default: false
 
       template_post_pr_reviews:
-        description: "Template: Post PR Reviews"
+        description: "Individual - Post PR Reviews"
         type: boolean
         default: false
 
       template_python_publish:
-        description: "Template: Python Publish"
+        description: "Individual - Python Publish"
         type: boolean
         default: false
 
       template_python_test_publish:
-        description: "Template: Python Test Publish"
+        description: "Individual - Python Test Publish"
         type: boolean
         default: false
 
