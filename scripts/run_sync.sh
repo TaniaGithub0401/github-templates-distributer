@@ -27,6 +27,7 @@ fi
 
 # Parse arguments
 DRY_RUN=true
+USE_FORK=false
 export TEMPLATE_MODE=auto
 export TEMPLATE_TEMPLATES=""
 export TEMPLATE_PROFILES=""
@@ -41,6 +42,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --dry-run)
             DRY_RUN=true
+            shift
+            ;;
+        --fork)
+            USE_FORK=true
             shift
             ;;
         --templates)
@@ -100,6 +105,10 @@ if [[ "$DRY_RUN" == true ]]; then
     OPTIONS+=("--dry-run")
 fi
 
+if [[ "$USE_FORK" == true ]]; then
+    OPTIONS+=("--fork")
+fi
+
 echo "Starting template synchronization..."
 echo "Repositories: ${REPOSITORIES[*]}"
 echo "Mode: $TEMPLATE_MODE"
@@ -111,7 +120,6 @@ multi-gitter run \
     "python3 $PROJECT_DIR/scripts/sync_templates.py" \
     "${REPOSITORY_ARGS[@]}" \
     --base-branch main \
-    --fork \
     --git-type cmd \
     "${OPTIONS[@]}" \
     -B sync-repository-templates \
