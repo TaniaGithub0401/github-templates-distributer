@@ -5,6 +5,7 @@
 import os
 import re
 import subprocess
+from copy import deepcopy
 from io import StringIO
 from pathlib import Path
 
@@ -69,6 +70,30 @@ def resolve_profile(name, profiles, visited=None):
     visited.remove(name)
 
     return selected
+
+
+def list_available(config, category):
+    """Display available templates or resolved profiles."""
+    if category == "templates":
+        print("Available templates:\n")
+
+        for name in sorted(config["templates"]):
+            print(f"  {name}")
+
+    elif category == "profiles":
+        print("Available profiles:\n")
+
+        profiles = config.get("profiles", {})
+
+        for name in sorted(profiles):
+            templates = sorted(resolve_profile(name, profiles))
+
+            print(f"  {name} ({len(templates)} templates):")
+
+            for template in templates:
+                print(f"    - {template}")
+
+            print()
 
 
 def select_templates(config):
@@ -203,6 +228,165 @@ def synchronize_mapping(existing, central, protected=()):
     return changed
 
 
+def merge_missing_mapping(existing, central):
+    """Add missing central values without changing existing local values."""
+    changed = False
+
+    for key, value in central.items():
+        if key not in existing:
+            existing[key] = deepcopy(value)
+            changed = True
+
+        elif isinstance(existing[key], dict) and isinstance(value, dict):
+            changed |= merge_missing_mapping(existing[key], value)
+
+    return changed
+
+
+def merge_mapping(
+    existing,
+    central,
+    preserve=(),
+    merge_preserve_existing=(),
+    path=(),
+):
+    """Merge central YAML while respecting local preservation rules."""
+
+    protected = {tuple(item.split(".")) for item in preserve}
+    preserve_existing = {
+        tuple(item.split("."))
+        for item in merge_preserve_existing
+    }
+
+    changed = False
+
+    for key, value in central.items():
+        current_path = path + (str(key),)
+
+        # Preserve this section completely.
+        if current_path in protected:
+            if key not in existing:
+                existing[key] = deepcopy(value)
+                changed = True
+            continue
+
+        # Keep existing values, but add missing central values.
+        if current_path in preserve_existing:
+            if key not in existing:
+                existing[key] = deepcopy(value)
+                changed = True
+            elif isinstance(existing[key], dict) and isinstance(value, dict):
+                changed |= merge_missing_mapping(existing[key], value)
+            else:
+                raise ValueError(
+                    f"Expected YAML mapping at: {'.'.join(current_path)}"
+                )
+            continue
+
+        # Normal merge: central values take priority.
+        if key not in existing:
+            existing[key] = deepcopy(value)
+            changed = True
+
+        elif isinstance(existing[key], dict) and isinstance(value, dict):
+            changed |= merge_mapping(
+                existing[key],
+                value,
+                preserve,
+                merge_preserve_existing,
+                current_path,
+            )
+
+        elif existing[key] != value:
+            existing[key] = deepcopy(value)
+            changed = True
+
+    return changed
+
+
+def render_merge_workflow(source, existing_path, job_name, template):
+    """Merge a reusable workflow with its central template."""
+    yaml = YAML()
+    yaml.preserve_quotes = True
+    yaml.width = 4096
+    yaml.indent(mapping=2, sequence=4, offset=2)
+
+    central = read_yaml(source)
+    existing = read_yaml(existing_path)
+
+    if not isinstance(central, dict) or not isinstance(existing, dict):
+        raise ValueError("Workflow must be a YAML mapping")
+
+    reusable = template["detect_by"] + "@"
+
+    central_jobs = [
+        (name, job)
+        for name, job in (central.get("jobs") or {}).items()
+        if isinstance(job, dict)
+        and isinstance(job.get("uses"), str)
+        and job["uses"].startswith(reusable)
+    ]
+
+    if len(central_jobs) != 1:
+        raise ValueError(f"Expected one reusable job in {source}")
+
+    central_job_name, central_job = central_jobs[0]
+    existing_job = existing["jobs"][job_name]
+
+    preserve = template.get("sync", {}).get("preserve", [])
+    merge_preserve_existing = template.get("sync", {}).get(
+        "merge_preserve_existing", []
+    )
+    # Match preserved job paths to the actual job name in the target.
+    preserve = [
+        (
+            f"jobs.{job_name}.{item[len('jobs.' + central_job_name + '.'):]}"
+            if item.startswith(f"jobs.{central_job_name}.")
+            else item
+        )
+        for item in preserve
+    ]
+
+    merge_preserve_existing = [
+        (
+            f"jobs.{job_name}.{item[len('jobs.' + central_job_name + '.'):]}"
+            if item.startswith(f"jobs.{central_job_name}.")
+            else item
+        )
+        for item in merge_preserve_existing
+    ]
+    changed = False
+
+    # Synchronize top-level fields, excluding the jobs mapping.
+    central_top_level = {
+        key: value for key, value in central.items()
+        if key != "jobs"
+    }
+
+    changed |= merge_mapping(
+        existing,
+        central_top_level,
+        preserve,
+        merge_preserve_existing,
+    )
+
+    # Update only the matched reusable job.
+    changed |= merge_mapping(
+        existing_job,
+        central_job,
+        preserve,
+        merge_preserve_existing,
+        ("jobs", job_name),
+    )
+
+    if not changed:
+        return existing_path.read_bytes()
+
+    output = StringIO()
+    yaml.dump(existing, output)
+    return output.getvalue().encode("utf-8")
+
+
 def render_workflow(source, existing_path, job_name, template):
     """Synchronize common fields while preserving local workflow settings."""
     yaml = YAML()
@@ -303,6 +487,54 @@ def write_template(destination, content):
     print(f"Updated: {destination}")
 
 
+def find_custom_workflows(target_dir, actions):
+    """Find workflows that directly use the specified GitHub Actions."""
+    yaml = YAML(typ="safe")
+    workflows_dir = target_dir / ".github" / "workflows"
+    found = []
+
+    if not workflows_dir.is_dir():
+        return found
+
+    for path in sorted(workflows_dir.iterdir()):
+        if path.suffix not in (".yml", ".yaml"):
+            continue
+
+        with path.open(encoding="utf-8") as file:
+            workflow = yaml.load(file)
+
+        if not isinstance(workflow, dict):
+            continue
+
+        jobs = workflow.get("jobs", {})
+
+        if not isinstance(jobs, dict):
+            continue
+
+        for job in jobs.values():
+            if not isinstance(job, dict):
+                continue
+
+            for step in job.get("steps", []):
+                if not isinstance(step, dict):
+                    continue
+
+                uses = step.get("uses", "")
+
+                if isinstance(uses, str) and any(
+                    uses.startswith(action + "@")
+                    for action in actions
+                ):
+                    found.append(path)
+                    break
+            else:
+                continue
+
+            break
+
+    return found
+
+
 def synchronize_templates(selected, config, templates_dir):
     """Apply regular or parameterized templates."""
     target_dir = Path.cwd().resolve()
@@ -317,6 +549,95 @@ def synchronize_templates(selected, config, templates_dir):
 
         if not source.is_file():
             raise FileNotFoundError(source)
+        # Declarative synchronization strategies
+        sync = template.get("sync", {})
+        strategy = sync.get("strategy")
+
+        if strategy == "replace":
+            custom_actions = sync.get("detect_existing", [])
+
+            if custom_actions:
+                custom_workflows = find_custom_workflows(
+                    target_dir, custom_actions
+                )
+
+                if custom_workflows:
+                    for path in custom_workflows:
+                        print(
+                            f"Skipped (custom workflow detected): "
+                            f"{name} -> {path.relative_to(target_dir)}"
+                        )
+                    continue
+            if "detect_by" in template:
+                workflows = find_existing_workflows(template, target_dir)
+
+                if not workflows:
+                    print(
+                        f"Skipped (no matching reusable workflow found): {name}"
+                    )
+                    continue
+
+                # Avoid replacing a file with multiple matching jobs.
+                paths = [path for path, _ in workflows]
+                if len(paths) != len(set(paths)):
+                    raise ValueError(
+                        f"Multiple matching jobs in one file: {name}"
+                    )
+
+                for path, _ in workflows:
+                    destination = path.resolve()
+
+                    if not destination.is_relative_to(target_dir):
+                        raise ValueError(
+                            f"Invalid destination: {destination}"
+                        )
+
+                    write_template(destination, source.read_bytes())
+
+                continue
+
+            # Templates without detect_by use their configured destination.
+            destination = (target_dir / template["destination"]).resolve()
+
+            if not destination.is_relative_to(target_dir):
+                raise ValueError(f"Invalid destination: {destination}")
+
+            if not destination.exists():
+                if sync.get("if_missing", "skip") == "skip":
+                    print(f"Skipped (workflow does not exist): {name}")
+                    continue
+
+            write_template(destination, source.read_bytes())
+            continue
+
+        if strategy == "merge":
+            workflows = find_existing_workflows(template, target_dir)
+
+            if not workflows:
+                print(f"Skipped (no matching reusable workflow found): {name}")
+                continue
+
+            paths = [path for path, _ in workflows]
+            if len(paths) != len(set(paths)):
+                raise ValueError(
+                    f"Multiple matching jobs in one file: {name}"
+                )
+
+            for path, job_name in workflows:
+                destination = path.resolve()
+
+                if not destination.is_relative_to(target_dir):
+                    raise ValueError(
+                        f"Invalid destination: {destination}"
+                    )
+
+                content = render_merge_workflow(
+                    source, destination, job_name, template
+                )
+
+                write_template(destination, content)
+
+            continue
 
         # Parameterized workflows: update their existing instances.
         if "detect_by" in template:
@@ -354,12 +675,22 @@ def synchronize_templates(selected, config, templates_dir):
 
 
 def main():
-    templates_dir = Path(os.environ["TEMPLATES_DIR"])
     config_path = Path(os.environ["CONFIG_PATH"])
+    config = load_config(config_path)
+
+    list_mode = os.environ.get("LIST_MODE")
+
+    if list_mode:
+        if list_mode not in ("templates", "profiles"):
+            raise ValueError(f"Unknown list mode: {list_mode}")
+
+        list_available(config, list_mode)
+        return
+
+    templates_dir = Path(os.environ["TEMPLATES_DIR"])
 
     print(f"Processing repository: {get_target_repository()}")
 
-    config = load_config(config_path)
     selected = select_templates(config)
 
     if not selected:

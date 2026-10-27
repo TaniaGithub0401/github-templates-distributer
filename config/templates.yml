@@ -3,30 +3,63 @@ templates:
   codeql:
     source: workflows/codeql.yml
     destination: .github/workflows/codeql.yml
+    sync:
+      strategy: replace
+      if_missing: skip
+      detect_existing:
+        - github/codeql-action/analyze
 
   grass-manual:
     source: workflows/grass-manual.yml
     destination: .github/workflows/grass-manual.yml
+    detect_by: mundialis/github-workflows/.github/workflows/grass-manual.yml
+    sync:
+      strategy: replace
+      if_missing: skip
 
   grass-test:
     source: workflows/grass-test.yml
     destination: .github/workflows/grass-test.yml
+    detect_by: mundialis/github-workflows/.github/workflows/grass-tests.yml
+    sync:
+      strategy: replace
+      if_missing: skip
 
   linting:
     source: workflows/linting.yml
     destination: .github/workflows/linting.yml
+    detect_by: mundialis/github-workflows/.github/workflows/linting.yml
+    sync:
+      strategy: merge
+      if_missing: skip
+      preserve:
+        - name
+        - "on"
+        - jobs.lint.permissions
+      merge_preserve_existing:
+        - jobs.lint.with
 
   post-pr-reviews:
     source: workflows/post-pr-reviews.yml
     destination: .github/workflows/post-pr-reviews.yml
+    detect_by: mundialis/github-workflows/.github/workflows/post-pr-reviews.yml
+    sync:
+      strategy: replace
+      if_missing: skip
 
   python-publish:
     source: workflows/python-publish.yml
     destination: .github/workflows/python-publish.yml
+    sync:
+      strategy: replace
+      if_missing: skip
 
   python-test-publish:
     source: workflows/python-test-publish.yml
     destination: .github/workflows/python-test-publish.yml
+    sync:
+      strategy: replace
+      if_missing: skip
 
   sbom-vulnerability-scan:
     source: workflows/sbom-vulnerability-scan.yml
@@ -48,35 +81,51 @@ templates:
 
 # collections of templates
 profiles:
+  all:
+    templates:
+      - codeql
+      - grass-manual
+      - grass-test
+      - linting
+      - post-pr-reviews
+      - python-publish
+      - sbom-vulnerability-scan
+      - third-party-licenses
+
   general:
     templates:
       - codeql
+      - linting
+      - post-pr-reviews
       - sbom-vulnerability-scan
       - third-party-licenses
 
   grass:
-    includes:
-      - general
     templates:
+      - codeql
       - grass-manual
+      - grass-test
       - linting
+      - sbom-vulnerability-scan
+      - third-party-licenses
 
   python:
-    includes:
-      - general
     templates:
+      - codeql
       - linting
+      - post-pr-reviews
+      - python-publish
+      - sbom-vulnerability-scan
+      - third-party-licenses
 
   quality:
     templates:
+      - codeql
       - linting
       - post-pr-reviews
 
-  python-publishing:
+  security:
     templates:
-      - python-publish
-      - python-test-publish
-
-  grass-testing:
-    templates:
-      - grass-test
+      - codeql
+      - sbom-vulnerability-scan
+      - third-party-licenses

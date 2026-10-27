@@ -28,8 +28,6 @@ on:
           - "GRASS - CodeQL, SBOM, Third-Party Licenses, GRASS Manual, Linting"
           - "Python - CodeQL, SBOM, Third-Party Licenses, Linting"
           - "Quality - Linting, Post PR Reviews"
-          - "Python Publishing - Python Publish, Python Test Publish"
-          - "GRASS Testing - GRASS Test"
 
       # Individual workflow templates
       template_codeql:
