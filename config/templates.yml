@@ -89,6 +89,7 @@ profiles:
       - linting
       - post-pr-reviews
       - python-publish
+      - python-test-publish
       - sbom-vulnerability-scan
       - third-party-licenses
 
@@ -96,7 +97,6 @@ profiles:
     templates:
       - codeql
       - linting
-      - post-pr-reviews
       - sbom-vulnerability-scan
       - third-party-licenses
 

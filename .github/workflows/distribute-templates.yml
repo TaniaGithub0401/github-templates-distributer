@@ -24,10 +24,12 @@ on:
         type: choice
         options:
           - "None - Individual templates only"
-          - "General - CodeQL, SBOM, Third-Party Licenses"
-          - "GRASS - CodeQL, SBOM, Third-Party Licenses, GRASS Manual, Linting"
-          - "Python - CodeQL, SBOM, Third-Party Licenses, Linting"
-          - "Quality - Linting, Post PR Reviews"
+          - "General - CodeQL, Linting, SBOM, Third-Party Licenses"
+          - "GRASS - General + GRASS Manual and GRASS Test"
+          - "Python - General + Post PR Reviews and Python Publish"
+          - "Quality - CodeQL, Linting, Post PR Reviews"
+          - "Security - CodeQL, SBOM, Third-Party Licenses"
+          - "All - All 9 templates"
 
       # Individual workflow templates
       template_codeql:
@@ -154,11 +156,11 @@ jobs:
               "Quality - "*)
                 SELECTED_PROFILES+=(quality)
                 ;;
-              "Python Publishing - "*)
-                SELECTED_PROFILES+=(python-publishing)
+              "Security - "*)
+                SELECTED_PROFILES+=(security)
                 ;;
-              "GRASS Testing - "*)
-                SELECTED_PROFILES+=(grass-testing)
+              "All - "*)
+                SELECTED_PROFILES+=(all)
                 ;;
               *)
                 echo "Error: Unknown profile: $SELECTED_PROFILE"

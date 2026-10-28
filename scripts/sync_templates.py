@@ -234,7 +234,11 @@ def merge_missing_mapping(existing, central):
 
     for key, value in central.items():
         if key not in existing:
-            existing[key] = deepcopy(value)
+            if isinstance(existing, CommentedMap) and len(existing) > 0:
+                existing.insert(len(existing) - 1, key, deepcopy(value))
+            else:
+                existing[key] = deepcopy(value)
+
             changed = True
 
         elif isinstance(existing[key], dict) and isinstance(value, dict):
