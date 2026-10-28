@@ -8,15 +8,6 @@ on:
         required: true
         type: string
 
-      mode:
-        description: "Template selection mode"
-        required: true
-        default: manual
-        type: choice
-        options:
-          - manual
-          - auto
-
       profile:
         description: "Select a profile and/or individual workflows below"
         required: true
@@ -110,7 +101,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.MULTI_GITTER_TOKEN }}
           TEMPLATES_DIR: ${{ github.workspace }}/templates-source/templates
           REPOSITORIES: ${{ inputs.repositories }}
-          TEMPLATE_MODE: ${{ inputs.mode }}
           APPLY_CHANGES: ${{ inputs.apply }}
 
           SELECTED_PROFILE: ${{ inputs.profile }}
@@ -139,10 +129,8 @@ jobs:
             ARGS+=(--dry-run)
           fi
 
-          if [[ "$TEMPLATE_MODE" == "manual" ]]; then
-
-            case "$SELECTED_PROFILE" in
-              "None - Individual templates only")
+          case "$SELECTED_PROFILE" in
+            "None - Individual templates only")
                 ;;
               "General - "*)
                 SELECTED_PROFILES+=(general)
@@ -169,15 +157,41 @@ jobs:
             esac
 
             # Selected individual templates
-            [[ "$TEMPLATE_CODEQL" == "true" ]] && SELECTED_TEMPLATES+=(codeql)
-            [[ "$TEMPLATE_SBOM" == "true" ]] && SELECTED_TEMPLATES+=(sbom-vulnerability-scan)
-            [[ "$TEMPLATE_LICENSES" == "true" ]] && SELECTED_TEMPLATES+=(third-party-licenses)
-            [[ "$TEMPLATE_GRASS_MANUAL" == "true" ]] && SELECTED_TEMPLATES+=(grass-manual)
-            [[ "$TEMPLATE_GRASS_TEST" == "true" ]] && SELECTED_TEMPLATES+=(grass-test)
-            [[ "$TEMPLATE_LINTING" == "true" ]] && SELECTED_TEMPLATES+=(linting)
-            [[ "$TEMPLATE_POST_PR_REVIEWS" == "true" ]] && SELECTED_TEMPLATES+=(post-pr-reviews)
-            [[ "$TEMPLATE_PYTHON_PUBLISH" == "true" ]] && SELECTED_TEMPLATES+=(python-publish)
-            [[ "$TEMPLATE_PYTHON_TEST_PUBLISH" == "true" ]] && SELECTED_TEMPLATES+=(python-test-publish)
+            if [[ "$TEMPLATE_CODEQL" == "true" ]]; then
+              SELECTED_TEMPLATES+=(codeql)
+            fi
+
+            if [[ "$TEMPLATE_SBOM" == "true" ]]; then
+              SELECTED_TEMPLATES+=(sbom-vulnerability-scan)
+            fi
+
+            if [[ "$TEMPLATE_LICENSES" == "true" ]]; then
+              SELECTED_TEMPLATES+=(third-party-licenses)
+            fi
+
+            if [[ "$TEMPLATE_GRASS_MANUAL" == "true" ]]; then
+              SELECTED_TEMPLATES+=(grass-manual)
+            fi
+
+            if [[ "$TEMPLATE_GRASS_TEST" == "true" ]]; then
+              SELECTED_TEMPLATES+=(grass-test)
+            fi
+
+            if [[ "$TEMPLATE_LINTING" == "true" ]]; then
+              SELECTED_TEMPLATES+=(linting)
+            fi
+
+            if [[ "$TEMPLATE_POST_PR_REVIEWS" == "true" ]]; then
+              SELECTED_TEMPLATES+=(post-pr-reviews)
+            fi
+
+            if [[ "$TEMPLATE_PYTHON_PUBLISH" == "true" ]]; then
+              SELECTED_TEMPLATES+=(python-publish)
+            fi
+
+            if [[ "$TEMPLATE_PYTHON_TEST_PUBLISH" == "true" ]]; then
+              SELECTED_TEMPLATES+=(python-test-publish)
+            fi
 
             if [[ ${#SELECTED_PROFILES[@]} -eq 0 && ${#SELECTED_TEMPLATES[@]} -eq 0 ]]; then
               echo "Error: Select at least one profile or template in manual mode."
@@ -193,6 +207,5 @@ jobs:
               TEMPLATES_CSV=$(IFS=,; echo "${SELECTED_TEMPLATES[*]}")
               ARGS+=(--templates "$TEMPLATES_CSV")
             fi
-          fi
 
           ./scripts/run_sync.sh "${ARGS[@]}" "${REPO_ARGS[@]}"

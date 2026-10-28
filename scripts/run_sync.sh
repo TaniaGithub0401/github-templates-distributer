@@ -43,7 +43,7 @@ fi
 # Parse arguments
 DRY_RUN=true
 USE_FORK=false
-export TEMPLATE_MODE=auto
+export TEMPLATE_MODE=manual
 export TEMPLATE_TEMPLATES=""
 export TEMPLATE_PROFILES=""
 
@@ -68,7 +68,6 @@ while [[ $# -gt 0 ]]; do
                 echo "Error: --templates requires a comma-separated list."
                 exit 1
             fi
-            TEMPLATE_MODE=manual
             TEMPLATE_TEMPLATES="$2"
             shift 2
             ;;
@@ -78,7 +77,6 @@ while [[ $# -gt 0 ]]; do
                 echo "Error: --profiles requires a comma-separated list."
                 exit 1
             fi
-            TEMPLATE_MODE=manual
             TEMPLATE_PROFILES="$2"
             shift 2
             ;;
@@ -96,6 +94,11 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
+
+if [[ -z "$TEMPLATE_PROFILES" && -z "$TEMPLATE_TEMPLATES" ]]; then
+    echo "Error: Select at least one profile or template."
+    exit 1
+fi
 
 if [[ ${#REPOSITORIES[@]} -eq 0 ]]; then
     echo "Error: At least one repository is required."
@@ -132,60 +135,53 @@ if [[ -n "$TEMPLATE_TEMPLATES" ]]; then
     done
 fi
 
-if [[ ${#BRANCH_PARTS[@]} -eq 0 ]]; then
-    BRANCH_NAME="sync-templates-auto"
-else
-    # Sort names to ensure the same selection produces the same branch
-    mapfile -t BRANCH_PARTS < <(
-        printf '%s\n' "${BRANCH_PARTS[@]}" | LC_ALL=C sort -u
+# Sort names to ensure the same selection produces the same branch
+mapfile -t BRANCH_PARTS < <(
+    printf '%s\n' "${BRANCH_PARTS[@]}" | LC_ALL=C sort -u
+)
+
+BRANCH_SUFFIX=$(IFS=-; echo "${BRANCH_PARTS[*]}")
+BRANCH_NAME="sync-${BRANCH_SUFFIX}"
+
+# Keep branch names short and deterministic
+if [[ ${#BRANCH_NAME} -gt 70 ]]; then
+    BRANCH_HASH=$(
+        printf '%s\n' "${BRANCH_PARTS[@]}" |
+        sha256sum |
+        cut -c1-8
     )
 
-    BRANCH_SUFFIX=$(IFS=-; echo "${BRANCH_PARTS[*]}")
-    BRANCH_NAME="sync-${BRANCH_SUFFIX}"
-
-    # Keep branch names short and deterministic
-    if [[ ${#BRANCH_NAME} -gt 70 ]]; then
-        BRANCH_HASH=$(
-            printf '%s\n' "${BRANCH_PARTS[@]}" |
-            sha256sum |
-            cut -c1-8
-        )
-
-        BRANCH_NAME="sync-templates-${BRANCH_HASH}"
-    fi
+    BRANCH_NAME="sync-templates-${BRANCH_HASH}"
 fi
 
 echo "Branch: $BRANCH_NAME"
 
 # Generate a readable pull request title
-if [[ "$TEMPLATE_MODE" == "auto" ]]; then
-    PR_TITLE="Sync repository templates (auto)"
-else
-    TITLE_PARTS=()
+TITLE_PARTS=()
 
-    if [[ -n "$TEMPLATE_PROFILES" ]]; then
-        IFS=',' read -ra PROFILES <<< "$TEMPLATE_PROFILES"
+if [[ -n "$TEMPLATE_PROFILES" ]]; then
+    IFS=',' read -ra PROFILES <<< "$TEMPLATE_PROFILES"
 
-        for profile in "${PROFILES[@]}"; do
-            TITLE_PARTS+=("$profile")
-        done
-    fi
-
-    if [[ -n "$TEMPLATE_TEMPLATES" ]]; then
-        IFS=',' read -ra TEMPLATES <<< "$TEMPLATE_TEMPLATES"
-
-        for template in "${TEMPLATES[@]}"; do
-            TITLE_PARTS+=("$template")
-        done
-    fi
-
-    mapfile -t TITLE_PARTS < <(
-        printf '%s\n' "${TITLE_PARTS[@]}" | LC_ALL=C sort -u
-    )
-    printf -v TITLE_TEXT '%s + ' "${TITLE_PARTS[@]}"
-    TITLE_TEXT="${TITLE_TEXT% + }"
-    PR_TITLE="Sync templates: $TITLE_TEXT"
+    for profile in "${PROFILES[@]}"; do
+        TITLE_PARTS+=("$profile")
+    done
 fi
+
+if [[ -n "$TEMPLATE_TEMPLATES" ]]; then
+    IFS=',' read -ra TEMPLATES <<< "$TEMPLATE_TEMPLATES"
+
+    for template in "${TEMPLATES[@]}"; do
+        TITLE_PARTS+=("$template")
+    done
+fi
+
+mapfile -t TITLE_PARTS < <(
+    printf '%s\n' "${TITLE_PARTS[@]}" | LC_ALL=C sort -u
+)
+
+printf -v TITLE_TEXT '%s + ' "${TITLE_PARTS[@]}"
+TITLE_TEXT="${TITLE_TEXT% + }"
+PR_TITLE="Sync templates: $TITLE_TEXT"
 
 PR_BODY="Automated synchronization from mundialis/github-templates.
 
