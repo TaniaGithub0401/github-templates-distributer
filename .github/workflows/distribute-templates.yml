@@ -8,6 +8,11 @@ on:
         required: true
         type: string
 
+      use_forks:
+        description: "Create branches in personal forks instead of target repositories"
+        type: boolean
+        default: false
+
       profile:
         description: "Select a profile and/or individual workflows below"
         required: true
@@ -96,6 +101,7 @@ jobs:
           TEMPLATES_DIR: ${{ github.workspace }}/templates-source/templates
           REPOSITORIES: ${{ inputs.repositories }}
           SELECTED_PROFILE: ${{ inputs.profile }}
+          USE_FORKS: ${{ inputs.use_forks }}
           TEMPLATE_CODEQL: ${{ inputs.template_codeql }}
           TEMPLATE_SBOM: ${{ inputs.template_sbom }}
           TEMPLATE_LICENSES: ${{ inputs.template_licenses }}
@@ -113,6 +119,10 @@ jobs:
           ARGS=(--apply)
           SELECTED_PROFILES=()
           SELECTED_TEMPLATES=()
+
+          if [[ "$USE_FORKS" == "true" ]]; then
+            ARGS+=(--fork)
+          fi
 
           case "$SELECTED_PROFILE" in
             "None - Individual templates only") ;;
