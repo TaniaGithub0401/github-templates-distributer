@@ -84,8 +84,8 @@ jobs:
       - name: Checkout templates
         uses: actions/checkout@v4
         with:
-          repository: TaniaGithub0401/github-templates
-          ref: add-shared-templates
+          repository: mundialis/github-templates
+          ref: main
           path: templates-source
 
       - name: Install Multi-Gitter

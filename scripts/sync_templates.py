@@ -1,16 +1,14 @@
 #!/usr/bin/env python3
 """Synchronize shared templates with GitHub repositories."""
 
-import os
-import re
-import subprocess
 from copy import deepcopy
 from io import StringIO
+import os
 from pathlib import Path
-
+import re
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap
-
+import subprocess
 
 DEPENDENCY_MARKER = "# TEMPLATE_DEPENDENCY_INPUT"
 
@@ -62,9 +60,7 @@ def resolve_profile(name, profiles, visited=None):
     selected = set(profile.get("templates", []))
 
     for included in profile.get("includes", []):
-        selected.update(
-            resolve_profile(included, profiles, visited)
-        )
+        selected.update(resolve_profile(included, profiles, visited))
 
     visited.remove(name)
 
@@ -97,12 +93,8 @@ def list_available(config, category):
 
 def select_templates(config):
     """Resolve selected templates and profiles."""
-    selected = parse_selection(
-        os.environ.get("TEMPLATE_TEMPLATES", "")
-    )
-    profiles = parse_selection(
-        os.environ.get("TEMPLATE_PROFILES", "")
-    )
+    selected = parse_selection(os.environ.get("TEMPLATE_TEMPLATES", ""))
+    profiles = parse_selection(os.environ.get("TEMPLATE_PROFILES", ""))
 
     if not selected and not profiles:
         raise ValueError("At least one template or profile is required")
@@ -110,9 +102,7 @@ def select_templates(config):
     available_profiles = config.get("profiles", {})
 
     for profile in profiles:
-        selected.update(
-            resolve_profile(profile, available_profiles)
-        )
+        selected.update(resolve_profile(profile, available_profiles))
 
     unknown = selected - config["templates"].keys()
     if unknown:
@@ -243,8 +233,7 @@ def merge_mapping(
 
     protected = {tuple(item.split(".")) for item in preserve}
     preserve_existing = {
-        tuple(item.split("."))
-        for item in merge_preserve_existing
+        tuple(item.split(".")) for item in merge_preserve_existing
     }
 
     changed = False
@@ -348,8 +337,7 @@ def render_merge_workflow(source, existing_path, job_name, template):
 
     # Synchronize top-level fields, excluding the jobs mapping.
     central_top_level = {
-        key: value for key, value in central.items()
-        if key != "jobs"
+        key: value for key, value in central.items() if key != "jobs"
     }
 
     changed |= merge_mapping(
@@ -403,7 +391,8 @@ def render_workflow(source, existing_path, job_name, template):
 
     reusable = template["detect_by"] + "@"
     central_jobs = [
-        job for job in (central.get("jobs") or {}).values()
+        job
+        for job in (central.get("jobs") or {}).values()
         if isinstance(job, dict)
         and isinstance(job.get("uses"), str)
         and job["uses"].startswith(reusable)
@@ -417,7 +406,8 @@ def render_workflow(source, existing_path, job_name, template):
         existing_job, template["dependency_inputs"]
     )
 
-    # Derive the desired inputs from the central template, with local overrides.
+    # Derive the desired inputs from the central template,
+    # with local overrides.
     central_inputs = central_job.get("with") or CommentedMap()
     for candidate in template["dependency_inputs"]:
         central_inputs.pop(candidate, None)
@@ -445,7 +435,8 @@ def render_workflow(source, existing_path, job_name, template):
             existing[key] = value
             changed = True
 
-    # A removed top-level trigger is intentional: the central template owns 'on'.
+    # A removed top-level trigger is intentional:
+    # the central template owns 'on'.
     if "on" not in central and "on" in existing:
         del existing["on"]
         changed = True
@@ -511,8 +502,7 @@ def find_custom_workflows(target_dir, actions):
                 uses = step.get("uses", "")
 
                 if isinstance(uses, str) and any(
-                    uses.startswith(action + "@")
-                    for action in actions
+                    uses.startswith(action + "@") for action in actions
                 ):
                     found.append(path)
                     break
@@ -522,7 +512,6 @@ def find_custom_workflows(target_dir, actions):
             break
 
     return found
-
 
 
 def synchronize_templates(selected, config, templates_dir):
@@ -576,7 +565,8 @@ def synchronize_templates(selected, config, templates_dir):
 
                 if not workflows:
                     print(
-                        f"Skipped (no matching reusable workflow found): {name}"
+                        "Skipped (no matching reusable workflow found): "
+                        f"{name}"
                     )
                     continue
 
@@ -590,9 +580,7 @@ def synchronize_templates(selected, config, templates_dir):
                     destination = path.resolve()
 
                     if not destination.is_relative_to(target_dir):
-                        raise ValueError(
-                            f"Invalid destination: {destination}"
-                        )
+                        raise ValueError(f"Invalid destination: {destination}")
 
                     existing = read_yaml(destination)
                     jobs = existing.get("jobs", {})
@@ -650,24 +638,18 @@ def synchronize_templates(selected, config, templates_dir):
             workflows = find_existing_workflows(template, target_dir)
 
             if not workflows:
-                print(
-                    f"Skipped (no matching reusable workflow found): {name}"
-                )
+                print(f"Skipped (no matching reusable workflow found): {name}")
                 continue
 
             paths = [path for path, _ in workflows]
             if len(paths) != len(set(paths)):
-                raise ValueError(
-                    f"Multiple matching jobs in one file: {name}"
-                )
+                raise ValueError(f"Multiple matching jobs in one file: {name}")
 
             for path, job_name in workflows:
                 destination = path.resolve()
 
                 if not destination.is_relative_to(target_dir):
-                    raise ValueError(
-                        f"Invalid destination: {destination}"
-                    )
+                    raise ValueError(f"Invalid destination: {destination}")
 
                 content = render_merge_workflow(
                     source, destination, job_name, template
@@ -682,24 +664,18 @@ def synchronize_templates(selected, config, templates_dir):
             workflows = find_existing_workflows(template, target_dir)
 
             if not workflows:
-                print(
-                    f"Skipped (no matching reusable workflow found): {name}"
-                )
+                print(f"Skipped (no matching reusable workflow found): {name}")
                 continue
 
             paths = [path for path, _ in workflows]
             if len(paths) != len(set(paths)):
-                raise ValueError(
-                    f"Multiple matching jobs in one file: {name}"
-                )
+                raise ValueError(f"Multiple matching jobs in one file: {name}")
 
             for path, job_name in workflows:
                 destination = path.resolve()
 
                 if not destination.is_relative_to(target_dir):
-                    raise ValueError(
-                        f"Invalid destination: {destination}"
-                    )
+                    raise ValueError(f"Invalid destination: {destination}")
 
                 content = render_workflow(
                     source, destination, job_name, template
@@ -712,7 +688,6 @@ def synchronize_templates(selected, config, templates_dir):
         raise ValueError(
             f"Unknown synchronization strategy for {name}: {strategy}"
         )
-
 
 
 def main():

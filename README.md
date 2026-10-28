@@ -10,17 +10,18 @@ Each user runs the workflow from a personal fork of the distributor and uses the
 
 ### One-time setup
 
-1. **Fork** [mundialis/github-templates-distributer](https://github.com/mundialis/github-templates-distributer) to your GitHub account. You do **not** need to fork `github-templates`: the workflow checks out the official template repository.
-2. Open **Actions** in your fork and enable workflows if GitHub asks you to.
-3. Create a **personal access token (PAT)** in **GitHub → Settings → Developer settings → Personal access tokens**. Prefer a fine-grained token limited to the repositories you intend to update, with the permissions needed to create branches and PRs (typically **Contents: read and write** and **Pull requests: read and write**). Follow any organization approval or access policies.
-4. In **your fork**, go to **Settings → Secrets and variables → Actions → New repository secret**. Save your PAT as `MULTI_GITTER_TOKEN`.
+1. **Fork** [mundialis/github-templates-distributer](https://github.com/mundialis/github-templates-distributer) to your GitHub account. The workflow uses templates from the official [mundialis/github-templates](https://github.com/mundialis/github-templates) repository.
 
-Do not paste the token into workflow inputs or commit it to Git. A token in your fork is separate from secrets configured in the official repository.
+   **Note:** Keep your fork up to date with the official distributor. The workflow must be present on your fork's default branch (usually `main`) to be available in GitHub Actions.
+
+2. Open **Actions** in your fork and enable workflows if GitHub asks you to.
+3. Create a **personal access token (PAT)** in **GitHub → Settings → Developer settings → Personal access tokens**. Prefer a fine-grained token limited to the repositories you intend to update, with the permissions needed to create branches and PRs (typically **Contents: read and write** and **Pull requests: read and write**).
+4. In **your fork**, go to **Settings → Secrets and variables → Actions → New repository secret**. Save your PAT as `MULTI_GITTER_TOKEN`.
 
 ### Start a distribution
 
 1. In **your fork**, open **Actions → Distribute repository templates → Run workflow**.
-2. Select the branch containing the distributor workflow (normally `main` after the official implementation is merged).
+2. Select the branch containing the distributor workflow (normally `main`).
 3. Enter the target repositories under **Repositories**, separated by spaces, for example:
 
    ```text
@@ -29,51 +30,45 @@ Do not paste the token into workflow inputs or commit it to Git. A token in your
 
 4. Choose a **Profile**, individual template checkboxes, or both. For example, **Security** selects CodeQL, SBOM Vulnerability Scan and Third-Party Licenses. Choose **None - Individual templates only** to select just individual workflows.
 5. Check the repository names and selections, then click **Run workflow**.
-6. Inspect the run logs and review the pull requests generated in the target repositories.
+6. Inspect the run logs and review the generated pull requests before merging.
 
-**Permissions and forks:** The current GitHub Actions workflow does **not** enable Multi-Gitter's `--fork` option. Your token therefore needs permission to push branches and propose PRs in the selected target repositories. If you lack those permissions, use the terminal's `--fork` option where your organization's rules allow it. Forking the **distributor** is not the same as forking the **target repositories**.
+### Permissions and forks
 
+The **Use forks** option determines where Multi-Gitter creates the branches containing the template updates:
+
+- **Disabled (default):** Multi-Gitter creates branches directly in the selected target repositories. Your token must have write access to these repositories.
+- **Enabled:** Multi-Gitter creates branches in your personal forks and opens pull requests to the original repositories. If a fork does not exist yet, Multi-Gitter can create it automatically, provided your token has the necessary permissions and the organization allows forking.
+
+When **Use forks** is enabled, you do not need to fork each target repository manually.
 
 ## Run from a local terminal
 
-Use this option to preview changes before submitting PRs, or to use Multi-Gitter's fork mode.
+Use the terminal to preview changes with `--dry-run` before creating pull requests.
 
 ### Install and set up
 
-You need Git, Python 3 with `venv` and `pip`, and Multi-Gitter. For Ubuntu or Linux Mint:
-
-```bash
-sudo apt update
-sudo apt install git python3 python3-venv python3-pip curl
-```
-
-Install [Multi-Gitter](https://github.com/lindell/multi-gitter) using an approved method. Its upstream installation script can be run with:
+**Requirements:** Git, Python 3 (`venv` and `pip`), and [Multi-Gitter](https://github.com/lindell/multi-gitter). Make sure Multi-Gitter is installed and available in your `PATH`.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/lindell/multi-gitter/master/install.sh | sh
 ```
 
-This command executes a remote script. Review it or use an approved pinned release if required by your organization. Ensure `multi-gitter` is available on your `PATH`.
-
-Clone both **official mundialis repositories** into the same parent directory:
+Clone the two official mundialis repositories into the same directory:
 
 ```bash
-mkdir -p ~/mundialis
-cd ~/mundialis
-
 git clone https://github.com/mundialis/github-templates-distributer.git
 git clone https://github.com/mundialis/github-templates.git
 
 cd github-templates-distributer
 python3 -m venv .venv
 source .venv/bin/activate
-python3 -m pip install -r requirements.txt
+pip install -r requirements.txt
 ```
 
-By default, the script reads templates from `../github-templates/templates`. If you keep them elsewhere, set `TEMPLATES_DIR` to that directory:
+By default, the distributor reads the shared templates from `../github-templates/templates`. If the repositories are stored in different locations, specify the template directory using `TEMPLATES_DIR`:
 
 ```bash
-export TEMPLATES_DIR="$HOME/path/to/github-templates/templates"
+export TEMPLATES_DIR="/path/to/github-templates/templates"
 ```
 
 ### Authenticate
@@ -139,7 +134,7 @@ If you cannot push directly to a target repository, Multi-Gitter can instead wor
   actinia-org/actinia-core
 ```
 
-This `--fork` option concerns the **target repository**, not the distributor. Your account and token still need the necessary access, and organization policies may restrict forking.
+The `--fork` option uses forks of the target repositories. Your token still needs the necessary access, and organization policies may restrict forking.
 
 ### Command-line options
 
@@ -165,7 +160,7 @@ See [`config/templates.yml`](config/templates.yml) for the current configuration
 | --- | --- |
 | `general` | CodeQL, Linting, SBOM Vulnerability Scan, Third-Party Licenses |
 | `grass` | General + GRASS Manual and GRASS Test |
-| `python` | CodeQL, Linting, Post PR Reviews, Python Publish, SBOM Vulnerability Scan, Third-Party Licenses |
+| `python` | General + Post PR Reviews and Python Publish |
 | `quality` | CodeQL, Linting, Post PR Reviews |
 | `security` | CodeQL, SBOM Vulnerability Scan, Third-Party Licenses |
 | `all` | All nine templates |
@@ -180,7 +175,7 @@ python-test-publish       sbom-vulnerability-scan   third-party-licenses
 
 ## What happens to existing workflows?
 
-The distributor updates only workflows matching the configured detection rules. Depending on the template, it may replace a workflow, merge selected settings, or preserve repository-specific dependency inputs. A custom workflow may be skipped; replacement can also fail safely if additional jobs are detected. **Always review the generated diff.**
+The distributor updates only workflows matching the configured detection rules. Depending on the template, it may replace a workflow, merge selected settings, or preserve repository-specific dependency inputs. A custom workflow may be skipped; replacement can also fail safely if additional jobs are detected.
 
 Multi-Gitter uses a deterministic branch name for each selection. If a branch already exists, its default conflict strategy is to **skip** it rather than overwrite the existing branch. Re-running the same selection does not automatically update an open PR. Resolve the existing PR or branch as appropriate before applying a new update.
 
