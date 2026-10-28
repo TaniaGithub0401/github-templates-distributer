@@ -43,7 +43,6 @@ fi
 # Parse arguments
 DRY_RUN=true
 USE_FORK=false
-export TEMPLATE_MODE=manual
 export TEMPLATE_TEMPLATES=""
 export TEMPLATE_PROFILES=""
 
@@ -159,30 +158,17 @@ echo "Branch: $BRANCH_NAME"
 # Generate a readable pull request title
 TITLE_PARTS=()
 
-if [[ -n "$TEMPLATE_PROFILES" ]]; then
-    IFS=',' read -ra PROFILES <<< "$TEMPLATE_PROFILES"
-
-    for profile in "${PROFILES[@]}"; do
-        TITLE_PARTS+=("$profile")
-    done
-fi
-
-if [[ -n "$TEMPLATE_TEMPLATES" ]]; then
-    IFS=',' read -ra TEMPLATES <<< "$TEMPLATE_TEMPLATES"
-
-    for template in "${TEMPLATES[@]}"; do
-        TITLE_PARTS+=("$template")
-    done
-fi
-
-mapfile -t TITLE_PARTS < <(
-    printf '%s\n' "${TITLE_PARTS[@]}" | LC_ALL=C sort -u
-)
+for part in "${BRANCH_PARTS[@]}"; do
+    if [[ "$part" == profile-* ]]; then
+        TITLE_PARTS+=("${part#profile-}")
+    else
+        TITLE_PARTS+=("$part")
+    fi
+done
 
 printf -v TITLE_TEXT '%s + ' "${TITLE_PARTS[@]}"
 TITLE_TEXT="${TITLE_TEXT% + }"
 PR_TITLE="Sync templates: $TITLE_TEXT"
-
 PR_BODY="Automated synchronization from mundialis/github-templates.
 
 Selected profiles: ${TEMPLATE_PROFILES:-none}
@@ -203,7 +189,6 @@ fi
 
 echo "Starting template synchronization..."
 echo "Repositories: ${REPOSITORIES[*]}"
-echo "Mode: $TEMPLATE_MODE"
 echo "Templates: ${TEMPLATE_TEMPLATES:-none}"
 echo "Profiles: ${TEMPLATE_PROFILES:-none}"
 echo "Dry run: $DRY_RUN"
@@ -217,6 +202,7 @@ multi-gitter run \
     "${REPOSITORY_ARGS[@]}" \
     --base-branch main \
     --git-type cmd \
+    --conflict-strategy skip \
     "${OPTIONS[@]}" \
     -B "$BRANCH_NAME" \
     -m "Synchronize repository templates" \

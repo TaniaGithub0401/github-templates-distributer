@@ -68,12 +68,6 @@ on:
         type: boolean
         default: false
 
-      apply:
-        description: "Create pull requests (unchecked = dry run)"
-        required: true
-        default: false
-        type: boolean
-
 jobs:
   distribute-templates:
     runs-on: ubuntu-latest
@@ -101,10 +95,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.MULTI_GITTER_TOKEN }}
           TEMPLATES_DIR: ${{ github.workspace }}/templates-source/templates
           REPOSITORIES: ${{ inputs.repositories }}
-          APPLY_CHANGES: ${{ inputs.apply }}
-
           SELECTED_PROFILE: ${{ inputs.profile }}
-
           TEMPLATE_CODEQL: ${{ inputs.template_codeql }}
           TEMPLATE_SBOM: ${{ inputs.template_sbom }}
           TEMPLATE_LICENSES: ${{ inputs.template_licenses }}
@@ -119,93 +110,53 @@ jobs:
         run: |
           read -r -a REPO_ARGS <<< "$REPOSITORIES"
 
-          ARGS=()
+          ARGS=(--apply)
           SELECTED_PROFILES=()
           SELECTED_TEMPLATES=()
 
-          if [[ "$APPLY_CHANGES" == "true" ]]; then
-            ARGS+=(--apply)
-          else
-            ARGS+=(--dry-run)
+          case "$SELECTED_PROFILE" in
+            "None - Individual templates only") ;;
+            "General - "*) SELECTED_PROFILES+=(general) ;;
+            "GRASS - "*) SELECTED_PROFILES+=(grass) ;;
+            "Python - "*) SELECTED_PROFILES+=(python) ;;
+            "Quality - "*) SELECTED_PROFILES+=(quality) ;;
+            "Security - "*) SELECTED_PROFILES+=(security) ;;
+            "All - "*) SELECTED_PROFILES+=(all) ;;
+            *)
+              echo "Error: Unknown profile: $SELECTED_PROFILE"
+              exit 1
+              ;;
+          esac
+
+          add_template_if_selected() {
+            if [[ "$1" == "true" ]]; then
+              SELECTED_TEMPLATES+=("$2")
+            fi
+          }
+
+          add_template_if_selected "$TEMPLATE_CODEQL" codeql
+          add_template_if_selected "$TEMPLATE_SBOM" sbom-vulnerability-scan
+          add_template_if_selected "$TEMPLATE_LICENSES" third-party-licenses
+          add_template_if_selected "$TEMPLATE_GRASS_MANUAL" grass-manual
+          add_template_if_selected "$TEMPLATE_GRASS_TEST" grass-test
+          add_template_if_selected "$TEMPLATE_LINTING" linting
+          add_template_if_selected "$TEMPLATE_POST_PR_REVIEWS" post-pr-reviews
+          add_template_if_selected "$TEMPLATE_PYTHON_PUBLISH" python-publish
+          add_template_if_selected "$TEMPLATE_PYTHON_TEST_PUBLISH" python-test-publish
+
+          if [[ ${#SELECTED_PROFILES[@]} -eq 0 && ${#SELECTED_TEMPLATES[@]} -eq 0 ]]; then
+            echo "Error: Select at least one profile or template."
+            exit 1
           fi
 
-          case "$SELECTED_PROFILE" in
-            "None - Individual templates only")
-                ;;
-              "General - "*)
-                SELECTED_PROFILES+=(general)
-                ;;
-              "GRASS - "*)
-                SELECTED_PROFILES+=(grass)
-                ;;
-              "Python - "*)
-                SELECTED_PROFILES+=(python)
-                ;;
-              "Quality - "*)
-                SELECTED_PROFILES+=(quality)
-                ;;
-              "Security - "*)
-                SELECTED_PROFILES+=(security)
-                ;;
-              "All - "*)
-                SELECTED_PROFILES+=(all)
-                ;;
-              *)
-                echo "Error: Unknown profile: $SELECTED_PROFILE"
-                exit 1
-                ;;
-            esac
+          if [[ ${#SELECTED_PROFILES[@]} -gt 0 ]]; then
+            PROFILES_CSV=$(IFS=,; echo "${SELECTED_PROFILES[*]}")
+            ARGS+=(--profiles "$PROFILES_CSV")
+          fi
 
-            # Selected individual templates
-            if [[ "$TEMPLATE_CODEQL" == "true" ]]; then
-              SELECTED_TEMPLATES+=(codeql)
-            fi
-
-            if [[ "$TEMPLATE_SBOM" == "true" ]]; then
-              SELECTED_TEMPLATES+=(sbom-vulnerability-scan)
-            fi
-
-            if [[ "$TEMPLATE_LICENSES" == "true" ]]; then
-              SELECTED_TEMPLATES+=(third-party-licenses)
-            fi
-
-            if [[ "$TEMPLATE_GRASS_MANUAL" == "true" ]]; then
-              SELECTED_TEMPLATES+=(grass-manual)
-            fi
-
-            if [[ "$TEMPLATE_GRASS_TEST" == "true" ]]; then
-              SELECTED_TEMPLATES+=(grass-test)
-            fi
-
-            if [[ "$TEMPLATE_LINTING" == "true" ]]; then
-              SELECTED_TEMPLATES+=(linting)
-            fi
-
-            if [[ "$TEMPLATE_POST_PR_REVIEWS" == "true" ]]; then
-              SELECTED_TEMPLATES+=(post-pr-reviews)
-            fi
-
-            if [[ "$TEMPLATE_PYTHON_PUBLISH" == "true" ]]; then
-              SELECTED_TEMPLATES+=(python-publish)
-            fi
-
-            if [[ "$TEMPLATE_PYTHON_TEST_PUBLISH" == "true" ]]; then
-              SELECTED_TEMPLATES+=(python-test-publish)
-            fi
-
-            if [[ ${#SELECTED_PROFILES[@]} -eq 0 && ${#SELECTED_TEMPLATES[@]} -eq 0 ]]; then
-              echo "Error: Select at least one profile or template in manual mode."
-              exit 1
-            fi
-
-            if [[ ${#SELECTED_PROFILES[@]} -gt 0 ]]; then
-              PROFILES_CSV=$(IFS=,; echo "${SELECTED_PROFILES[*]}")
-              ARGS+=(--profiles "$PROFILES_CSV")
-            fi
-
-            if [[ ${#SELECTED_TEMPLATES[@]} -gt 0 ]]; then
-              TEMPLATES_CSV=$(IFS=,; echo "${SELECTED_TEMPLATES[*]}")
-              ARGS+=(--templates "$TEMPLATES_CSV")
-            fi
+          if [[ ${#SELECTED_TEMPLATES[@]} -gt 0 ]]; then
+            TEMPLATES_CSV=$(IFS=,; echo "${SELECTED_TEMPLATES[*]}")
+            ARGS+=(--templates "$TEMPLATES_CSV")
+          fi
 
           ./scripts/run_sync.sh "${ARGS[@]}" "${REPO_ARGS[@]}"

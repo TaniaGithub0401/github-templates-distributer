@@ -15,7 +15,6 @@ templates:
     detect_by: mundialis/github-workflows/.github/workflows/grass-manual.yml
     sync:
       strategy: replace
-      if_missing: skip
 
   grass-test:
     source: workflows/grass-test.yml
@@ -23,7 +22,6 @@ templates:
     detect_by: mundialis/github-workflows/.github/workflows/grass-tests.yml
     sync:
       strategy: replace
-      if_missing: skip
 
   linting:
     source: workflows/linting.yml
@@ -31,7 +29,6 @@ templates:
     detect_by: mundialis/github-workflows/.github/workflows/linting.yml
     sync:
       strategy: merge
-      if_missing: skip
       preserve:
         - name
         - "on"
@@ -45,21 +42,22 @@ templates:
     detect_by: mundialis/github-workflows/.github/workflows/post-pr-reviews.yml
     sync:
       strategy: replace
-      if_missing: skip
 
   python-publish:
     source: workflows/python-publish.yml
     destination: .github/workflows/python-publish.yml
+    detect_by: mundialis/github-workflows/.github/workflows/python-publish.yml
     sync:
       strategy: replace
-      if_missing: skip
+      match_destination: true
 
   python-test-publish:
     source: workflows/python-test-publish.yml
     destination: .github/workflows/python-test-publish.yml
+    detect_by: mundialis/github-workflows/.github/workflows/python-publish.yml
     sync:
       strategy: replace
-      if_missing: skip
+      match_destination: true
 
   sbom-vulnerability-scan:
     source: workflows/sbom-vulnerability-scan.yml
@@ -70,6 +68,8 @@ templates:
       - pyproject
     preserve_inputs:
       - dependency-track-project-name
+    sync:
+      strategy: parameterized
 
   third-party-licenses:
     source: workflows/third-party-licenses.yml
@@ -78,6 +78,8 @@ templates:
       - dockerfile
       - requirements
       - pyproject
+    sync:
+      strategy: parameterized
 
 # collections of templates
 profiles:

@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python3
 """Synchronize shared templates with GitHub repositories."""
 
@@ -97,29 +96,16 @@ def list_available(config, category):
 
 
 def select_templates(config):
-    """Resolve templates from manual selection or defaults."""
-    mode = os.environ.get("TEMPLATE_MODE", "auto")
+    """Resolve selected templates and profiles."""
+    selected = parse_selection(
+        os.environ.get("TEMPLATE_TEMPLATES", "")
+    )
+    profiles = parse_selection(
+        os.environ.get("TEMPLATE_PROFILES", "")
+    )
 
-    if mode == "manual":
-        selected = parse_selection(
-            os.environ.get("TEMPLATE_TEMPLATES", "")
-        )
-        profiles = parse_selection(
-            os.environ.get("TEMPLATE_PROFILES", "")
-        )
-
-        if not selected and not profiles:
-            raise ValueError("Manual mode requires templates or profiles")
-
-    elif mode == "auto":
-        selected = set(config.get("default_templates", []))
-        profiles = set()
-
-        if config.get("rules"):
-            raise ValueError("Automatic rules are not implemented yet")
-
-    else:
-        raise ValueError(f"Unknown template mode: {mode}")
+    if not selected and not profiles:
+        raise ValueError("At least one template or profile is required")
 
     available_profiles = config.get("profiles", {})
 
@@ -132,8 +118,7 @@ def select_templates(config):
     if unknown:
         raise ValueError(f"Unknown templates: {sorted(unknown)}")
 
-    print(f"Template mode: {mode}")
-    print(f"Selected templates: {', '.join(sorted(selected)) or 'none'}")
+    print(f"Selected templates: {', '.join(sorted(selected))}")
 
     return selected
 
@@ -539,8 +524,9 @@ def find_custom_workflows(target_dir, actions):
     return found
 
 
+
 def synchronize_templates(selected, config, templates_dir):
-    """Apply regular or parameterized templates."""
+    """Synchronize selected templates with the target repository."""
     target_dir = Path.cwd().resolve()
     templates_dir = templates_dir.resolve()
 
@@ -553,10 +539,11 @@ def synchronize_templates(selected, config, templates_dir):
 
         if not source.is_file():
             raise FileNotFoundError(source)
-        # Declarative synchronization strategies
+
         sync = template.get("sync", {})
         strategy = sync.get("strategy")
 
+        # Replace existing workflows with the central template.
         if strategy == "replace":
             custom_actions = sync.get("detect_existing", [])
 
@@ -572,8 +559,20 @@ def synchronize_templates(selected, config, templates_dir):
                             f"{name} -> {path.relative_to(target_dir)}"
                         )
                     continue
+
             if "detect_by" in template:
                 workflows = find_existing_workflows(template, target_dir)
+
+                if sync.get("match_destination", False):
+                    expected_destination = (
+                        target_dir / template["destination"]
+                    ).resolve()
+
+                    workflows = [
+                        (path, job_name)
+                        for path, job_name in workflows
+                        if path.resolve() == expected_destination
+                    ]
 
                 if not workflows:
                     print(
@@ -581,14 +580,13 @@ def synchronize_templates(selected, config, templates_dir):
                     )
                     continue
 
-                # Avoid replacing a file with multiple matching jobs.
                 paths = [path for path, _ in workflows]
                 if len(paths) != len(set(paths)):
                     raise ValueError(
                         f"Multiple matching jobs in one file: {name}"
                     )
 
-                for path, _ in workflows:
+                for path, job_name in workflows:
                     destination = path.resolve()
 
                     if not destination.is_relative_to(target_dir):
@@ -596,29 +594,65 @@ def synchronize_templates(selected, config, templates_dir):
                             f"Invalid destination: {destination}"
                         )
 
+                    existing = read_yaml(destination)
+                    jobs = existing.get("jobs", {})
+
+                    if not isinstance(jobs, dict) or set(jobs) != {job_name}:
+                        raise ValueError(
+                            f"Refusing to replace workflow with additional "
+                            f"jobs: {destination}"
+                        )
+
                     write_template(destination, source.read_bytes())
 
                 continue
 
-            # Templates without detect_by use their configured destination.
+            # Templates identified by a fixed destination.
             destination = (target_dir / template["destination"]).resolve()
 
             if not destination.is_relative_to(target_dir):
                 raise ValueError(f"Invalid destination: {destination}")
 
             if not destination.exists():
-                if sync.get("if_missing", "skip") == "skip":
-                    print(f"Skipped (workflow does not exist): {name}")
-                    continue
+                print(f"Skipped (workflow does not exist): {name}")
+                continue
+
+            existing = read_yaml(destination)
+            central = read_yaml(source)
+
+            if not isinstance(existing, dict) or not isinstance(central, dict):
+                raise ValueError(f"Invalid workflow: {destination}")
+
+            existing_jobs = existing.get("jobs") or {}
+            central_jobs = central.get("jobs") or {}
+
+            if (
+                not isinstance(existing_jobs, dict)
+                or not isinstance(central_jobs, dict)
+                or set(existing_jobs) != set(central_jobs)
+                or any(
+                    not isinstance(existing_jobs[job], dict)
+                    or not isinstance(central_jobs[job], dict)
+                    or existing_jobs[job].get("uses")
+                    != central_jobs[job].get("uses")
+                    for job in central_jobs
+                )
+            ):
+                raise ValueError(
+                    f"Refusing to replace customized workflow: {destination}"
+                )
 
             write_template(destination, source.read_bytes())
             continue
 
+        # Merge central values while preserving configured local settings.
         if strategy == "merge":
             workflows = find_existing_workflows(template, target_dir)
 
             if not workflows:
-                print(f"Skipped (no matching reusable workflow found): {name}")
+                print(
+                    f"Skipped (no matching reusable workflow found): {name}"
+                )
                 continue
 
             paths = [path for path, _ in workflows]
@@ -643,39 +677,42 @@ def synchronize_templates(selected, config, templates_dir):
 
             continue
 
-        # Parameterized workflows: update their existing instances.
-        if "detect_by" in template:
+        # Synchronize workflows with repository-specific dependency inputs.
+        if strategy == "parameterized":
             workflows = find_existing_workflows(template, target_dir)
 
             if not workflows:
-                print(f"No existing workflow found: {name}")
+                print(
+                    f"Skipped (no matching reusable workflow found): {name}"
+                )
                 continue
 
-            # Avoid updating the same file twice.
             paths = [path for path, _ in workflows]
             if len(paths) != len(set(paths)):
-                raise ValueError(f"Multiple matching jobs in one file: {name}")
+                raise ValueError(
+                    f"Multiple matching jobs in one file: {name}"
+                )
 
             for path, job_name in workflows:
                 destination = path.resolve()
 
                 if not destination.is_relative_to(target_dir):
-                    raise ValueError(f"Invalid destination: {destination}")
+                    raise ValueError(
+                        f"Invalid destination: {destination}"
+                    )
 
                 content = render_workflow(
                     source, destination, job_name, template
                 )
+
                 write_template(destination, content)
 
             continue
 
-        # Regular templates: copy the file as it is.
-        destination = (target_dir / template["destination"]).resolve()
+        raise ValueError(
+            f"Unknown synchronization strategy for {name}: {strategy}"
+        )
 
-        if not destination.is_relative_to(target_dir):
-            raise ValueError(f"Invalid destination: {destination}")
-
-        write_template(destination, source.read_bytes())
 
 
 def main():
@@ -696,11 +733,6 @@ def main():
     print(f"Processing repository: {get_target_repository()}")
 
     selected = select_templates(config)
-
-    if not selected:
-        print("No templates selected.")
-        return
-
     synchronize_templates(selected, config, templates_dir)
 
 
