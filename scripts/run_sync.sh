@@ -1,4 +1,3 @@
-
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -42,7 +41,7 @@ fi
 
 # Parse arguments
 DRY_RUN=true
-USE_FORK=false
+USE_FORK=true
 export TEMPLATE_TEMPLATES=""
 export TEMPLATE_PROFILES=""
 
@@ -60,6 +59,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --fork)
             USE_FORK=true
+            shift
+            ;;
+        --no-fork)
+            USE_FORK=false
             shift
             ;;
         --templates)
@@ -80,7 +83,7 @@ while [[ $# -gt 0 ]]; do
             shift 2
             ;;
         --help)
-            echo "Usage: $0 [--apply|--dry-run] [--templates name1,name2] [--profiles name1,name2] owner/repo ..."
+            echo "Usage: $0 [--apply|--dry-run] [--fork|--no-fork] [--templates name1,name2] [--profiles name1,name2] owner/repo ..."
             exit 0
             ;;
         -*)
@@ -210,4 +213,4 @@ multi-gitter run \
     --pr-body "$PR_BODY" \
     --author-name "github-actions[bot]" \
     --author-email "41898282+github-actions[bot]@users.noreply.github.com" \
-    --log-level=info
+    --log-level=debug

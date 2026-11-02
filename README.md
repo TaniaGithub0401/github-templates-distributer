@@ -36,8 +36,9 @@ Each user runs the workflow from a personal fork of the distributor and uses the
 
 The **Use forks** option determines where Multi-Gitter creates the branches containing the template updates:
 
-- **Disabled (default):** Multi-Gitter creates branches directly in the selected target repositories. Your token must have write access to these repositories.
-- **Enabled:** Multi-Gitter creates branches in your personal forks and opens pull requests to the original repositories. If a fork does not exist yet, Multi-Gitter can create it automatically, provided your token has the necessary permissions and the organization allows forking.
+- **Enabled (default):** Multi-Gitter creates branches in your personal forks and opens pull requests to the original repositories. If a fork does not exist yet, Multi-Gitter can create it automatically, provided your token has the necessary permissions and the organization allows forking.
+
+- **Disabled:** Multi-Gitter creates branches directly in the selected target repositories. Your token must have write access to these repositories.
 
 When **Use forks** is enabled, you do not need to fork each target repository manually.
 
@@ -61,7 +62,7 @@ git clone https://github.com/mundialis/github-templates.git
 
 cd github-templates-distributer
 python3 -m venv .venv
-source .venv/bin/activate
+. .venv/bin/activate
 pip install -r requirements.txt
 ```
 
@@ -124,17 +125,20 @@ Once the preview looks correct, run the same selection with `--apply`:
   actinia-org/actinia-core
 ```
 
-If you cannot push directly to a target repository, Multi-Gitter can instead work through a fork, where permitted:
+By default, Multi-Gitter creates branches in personal forks and opens pull requests to the original repositories.
+To create branches directly in the target repositories instead, use `--no-fork`. This requires write access to those repositories.
 
 ```bash
 ./scripts/run_sync.sh \
   --apply \
-  --fork \
+  --no-fork \
   --profiles security \
   actinia-org/actinia-core
 ```
 
 The `--fork` option uses forks of the target repositories. Your token still needs the necessary access, and organization policies may restrict forking.
+
+Forking private repositories is not possible in our current setup. For private repositories, use `--no-fork` and make sure your token has write access to the target repository.
 
 ### Command-line options
 
@@ -144,7 +148,8 @@ The `--fork` option uses forks of the target repositories. Your token still need
 | `--apply` | Push branches and create PRs for changed repositories. |
 | `--profiles name1,name2` | Select profiles (comma-separated). |
 | `--templates name1,name2` | Select individual templates (comma-separated). |
-| `--fork` | Use Multi-Gitter's fork mode for target repositories. |
+| `--fork` | Create branches in personal forks (default). |
+| `--no-fork` | Create branches directly in target repositories. |
 | `--list-profiles` | Show profiles and their templates. |
 | `--list-templates` | Show available template names. |
 | `--help` | Show command usage. |

@@ -11,7 +11,7 @@ on:
       use_forks:
         description: "Create branches in personal forks instead of target repositories"
         type: boolean
-        default: false
+        default: true
 
       profile:
         description: "Select a profile and/or individual workflows below"
@@ -122,6 +122,8 @@ jobs:
 
           if [[ "$USE_FORKS" == "true" ]]; then
             ARGS+=(--fork)
+          else
+            ARGS+=(--no-fork)
           fi
 
           case "$SELECTED_PROFILE" in
