@@ -73,6 +73,24 @@ templates:
     sync:
       strategy: parameterized
 
+  security-md:
+    source: common/SECURITY.md
+    destination: SECURITY.md
+    sync:
+      strategy: file
+
+  agents-md:
+    source: common/AGENTS.md
+    destination: AGENTS.md
+    sync:
+      strategy: file
+
+  contributing-md:
+    source: common/CONTRIBUTING.md
+    destination: CONTRIBUTING.md
+    sync:
+      strategy: file
+
 # collections of templates
 profiles:
   all:
@@ -85,6 +103,11 @@ profiles:
       - python-publish
       - sbom-vulnerability-scan
       - third-party-licenses
+      # Markdown templates are temporarily excluded until
+      # the official source files are available.
+      #- security-md
+      #- agents-md
+      #- contributing-md
 
   general:
     templates:
@@ -122,3 +145,9 @@ profiles:
       - codeql
       - sbom-vulnerability-scan
       - third-party-licenses
+
+  documentation:
+    templates:
+      - security-md
+      - agents-md
+      - contributing-md

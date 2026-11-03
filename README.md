@@ -1,6 +1,6 @@
 # GitHub Workflow Template Distributor
 
-Synchronize shared GitHub Actions workflows across repositories using [Multi-Gitter](https://github.com/lindell/multi-gitter). Templates are maintained in [mundialis/github-templates](https://github.com/mundialis/github-templates); this repository provides a GitHub Actions interface and a command-line script to distribute them.
+Synchronize shared GitHub Actions workflows and repository templates across repositories using [Multi-Gitter](https://github.com/lindell/multi-gitter). Templates are maintained in [mundialis/github-templates](https://github.com/mundialis/github-templates); this repository provides a GitHub Actions interface and a command-line script to distribute them.
 
 The distributor proposes changes through **pull requests**. It does not merge them. Review each PR before merging, particularly when a template replaces an existing workflow.
 
@@ -28,7 +28,7 @@ Each user runs the workflow from a personal fork of the distributor and uses the
    mundialis/grass-gis-helpers actinia-org/actinia-core
    ```
 
-4. Choose a **Profile**, individual template checkboxes, or both. For example, **Security** selects CodeQL, SBOM Vulnerability Scan and Third-Party Licenses. Choose **None - Individual templates only** to select just individual workflows.
+4. Choose a **Profile**, individual template checkboxes, or both. For example, **Security** selects CodeQL, SBOM Vulnerability Scan and Third-Party Licenses. Choose **None - Individual templates only** to select individual templates.
 5. Check the repository names and selections, then click **Run workflow**.
 6. Inspect the run logs and review the generated pull requests before merging.
 
@@ -125,8 +125,9 @@ Once the preview looks correct, run the same selection with `--apply`:
   actinia-org/actinia-core
 ```
 
-By default, Multi-Gitter creates branches in personal forks and opens pull requests to the original repositories.
-To create branches directly in the target repositories instead, use `--no-fork`. This requires write access to those repositories.
+By default, branches are created in personal forks. To create branches directly in the target repositories, use `--no-fork`, which requires write access.
+
+Forking private repositories is not possible in our current setup. For private repositories, use `--no-fork` and make sure your token has write access to the target repository.
 
 ```bash
 ./scripts/run_sync.sh \
@@ -135,10 +136,6 @@ To create branches directly in the target repositories instead, use `--no-fork`.
   --profiles security \
   actinia-org/actinia-core
 ```
-
-The `--fork` option uses forks of the target repositories. Your token still needs the necessary access, and organization policies may restrict forking.
-
-Forking private repositories is not possible in our current setup. For private repositories, use `--no-fork` and make sure your token has write access to the target repository.
 
 ### Command-line options
 
@@ -168,25 +165,35 @@ See [`config/templates.yml`](config/templates.yml) for the current configuration
 | `python` | General + Post PR Reviews and Python Publish |
 | `quality` | CodeQL, Linting, Post PR Reviews |
 | `security` | CodeQL, SBOM Vulnerability Scan, Third-Party Licenses |
-| `all` | All templates |
+| `documentation` | SECURITY.md, AGENTS.md, CONTRIBUTING.md |
+| `all` | All workflow templates |
 
 Individual template names:
 
 ```text
 codeql                    grass-manual              grass-test
 linting                   post-pr-reviews           python-publish
-sbom-vulnerability-scan   third-party-licenses
+sbom-vulnerability-scan   third-party-licenses      security-md
+agents-md                 contributing-md
 ```
+
+### Markdown templates (Not ready for distribution)
+
+The distributor supports `SECURITY.md`, `AGENTS.md`, and `CONTRIBUTING.md` through the `documentation` profile or individual template selection.
+
+The `file` synchronization strategy creates missing files, leaves identical files unchanged, and replaces existing files entirely when their content differs. Repository-specific content is not preserved.
+
+The distribution logic was tested using local placeholder templates, which are not included in the repository. The official Markdown templates are still pending.
 
 ## What happens to existing workflows?
 
-The distributor updates only workflows matching the configured detection rules. Depending on the template, it may replace a workflow, merge selected settings, or preserve repository-specific dependency inputs. A custom workflow may be skipped; replacement can also fail safely if additional jobs are detected.
+The distributor updates only workflows matching the configured detection rules. Depending on the template, it may replace a workflow, merge selected settings, or preserve repository-specific dependency inputs. Parameterized workflows are skipped if no matching workflow exists. Replacement may also be skipped when additional jobs are detected.
 
 Multi-Gitter uses a deterministic branch name for each selection. If a branch already exists, its default conflict strategy is to **skip** it rather than overwrite the existing branch. Re-running the same selection does not automatically update an open PR. Resolve the existing PR or branch as appropriate before applying a new update.
 
 ## Updating or adding templates (maintainers)
 
-1. Update the source workflow in [mundialis/github-templates](https://github.com/mundialis/github-templates).
+1. Update the source template in [mundialis/github-templates](https://github.com/mundialis/github-templates).
 2. Add or update its configuration in [`config/templates.yml`](config/templates.yml), including the detection and synchronization rules.
 3. Update the appropriate profiles and, if needed, the individual-template checkboxes in [`.github/workflows/distribute-templates.yml`](.github/workflows/distribute-templates.yml).
 4. Test against a disposable local repository or personal fork, then use a local `--dry-run` and inspect the output before proposing changes.

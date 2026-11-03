@@ -694,6 +694,19 @@ def synchronize_templates(selected, config, templates_dir):
 
             continue
 
+        # Create or update regular files such as Markdown documents.
+        if strategy == "file":
+            destination = (target_dir / template["destination"]).resolve()
+
+            if not destination.is_relative_to(target_dir):
+                raise ValueError(f"Invalid destination: {destination}")
+
+            if destination.exists() and not destination.is_file():
+                raise ValueError(f"Destination is not a file: {destination}")
+
+            write_template(destination, source.read_bytes())
+            continue
+
         raise ValueError(
             f"Unknown synchronization strategy for {name}: {strategy}"
         )

@@ -14,7 +14,7 @@ on:
         default: true
 
       profile:
-        description: "Select a profile and/or individual workflows below"
+        description: "Select a profile and/or individual templates below"
         required: true
         default: "None - Individual templates only"
         type: choice
@@ -25,9 +25,10 @@ on:
           - "Python - General + Post PR Reviews and Python Publish"
           - "Quality - CodeQL, Linting, Post PR Reviews"
           - "Security - CodeQL, SBOM, Third-Party Licenses"
+          - "Documentation - SECURITY.md, AGENTS.md, CONTRIBUTING.md"
           - "All - All templates"
 
-      # Individual workflow templates
+      # Individual templates
       template_codeql:
         description: "Individual - CodeQL"
         type: boolean
@@ -65,6 +66,21 @@ on:
 
       template_python_publish:
         description: "Individual - Python Publish"
+        type: boolean
+        default: false
+
+      template_security_md:
+        description: "Individual - SECURITY.md"
+        type: boolean
+        default: false
+
+      template_agents_md:
+        description: "Individual - AGENTS.md"
+        type: boolean
+        default: false
+
+      template_contributing_md:
+        description: "Individual - CONTRIBUTING.md"
         type: boolean
         default: false
 
@@ -106,6 +122,10 @@ jobs:
           TEMPLATE_POST_PR_REVIEWS: ${{ inputs.template_post_pr_reviews }}
           TEMPLATE_PYTHON_PUBLISH: ${{ inputs.template_python_publish }}
 
+          TEMPLATE_SECURITY_MD: ${{ inputs.template_security_md }}
+          TEMPLATE_AGENTS_MD: ${{ inputs.template_agents_md }}
+          TEMPLATE_CONTRIBUTING_MD: ${{ inputs.template_contributing_md }}
+
         shell: bash
         run: |
           read -r -a REPO_ARGS <<< "$REPOSITORIES"
@@ -127,6 +147,7 @@ jobs:
             "Python - "*) SELECTED_PROFILES+=(python) ;;
             "Quality - "*) SELECTED_PROFILES+=(quality) ;;
             "Security - "*) SELECTED_PROFILES+=(security) ;;
+            "Documentation - "*) SELECTED_PROFILES+=(documentation) ;;
             "All - "*) SELECTED_PROFILES+=(all) ;;
             *)
               echo "Error: Unknown profile: $SELECTED_PROFILE"
@@ -148,6 +169,9 @@ jobs:
           add_template_if_selected "$TEMPLATE_LINTING" linting
           add_template_if_selected "$TEMPLATE_POST_PR_REVIEWS" post-pr-reviews
           add_template_if_selected "$TEMPLATE_PYTHON_PUBLISH" python-publish
+          add_template_if_selected "$TEMPLATE_SECURITY_MD" security-md
+          add_template_if_selected "$TEMPLATE_AGENTS_MD" agents-md
+          add_template_if_selected "$TEMPLATE_CONTRIBUTING_MD" contributing-md
 
           if [[ ${#SELECTED_PROFILES[@]} -eq 0 && ${#SELECTED_TEMPLATES[@]} -eq 0 ]]; then
             echo "Error: Select at least one profile or template."
