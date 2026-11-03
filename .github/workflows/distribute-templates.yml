@@ -25,7 +25,7 @@ on:
           - "Python - General + Post PR Reviews and Python Publish"
           - "Quality - CodeQL, Linting, Post PR Reviews"
           - "Security - CodeQL, SBOM, Third-Party Licenses"
-          - "All - All 9 templates"
+          - "All - All templates"
 
       # Individual workflow templates
       template_codeql:
@@ -68,11 +68,6 @@ on:
         type: boolean
         default: false
 
-      template_python_test_publish:
-        description: "Individual - Python Test Publish"
-        type: boolean
-        default: false
-
 jobs:
   distribute-templates:
     runs-on: ubuntu-latest
@@ -110,7 +105,6 @@ jobs:
           TEMPLATE_LINTING: ${{ inputs.template_linting }}
           TEMPLATE_POST_PR_REVIEWS: ${{ inputs.template_post_pr_reviews }}
           TEMPLATE_PYTHON_PUBLISH: ${{ inputs.template_python_publish }}
-          TEMPLATE_PYTHON_TEST_PUBLISH: ${{ inputs.template_python_test_publish }}
 
         shell: bash
         run: |
@@ -154,7 +148,6 @@ jobs:
           add_template_if_selected "$TEMPLATE_LINTING" linting
           add_template_if_selected "$TEMPLATE_POST_PR_REVIEWS" post-pr-reviews
           add_template_if_selected "$TEMPLATE_PYTHON_PUBLISH" python-publish
-          add_template_if_selected "$TEMPLATE_PYTHON_TEST_PUBLISH" python-test-publish
 
           if [[ ${#SELECTED_PROFILES[@]} -eq 0 && ${#SELECTED_TEMPLATES[@]} -eq 0 ]]; then
             echo "Error: Select at least one profile or template."

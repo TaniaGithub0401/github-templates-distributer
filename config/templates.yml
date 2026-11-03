@@ -51,14 +51,6 @@ templates:
       strategy: replace
       match_destination: true
 
-  python-test-publish:
-    source: workflows/python-test-publish.yml
-    destination: .github/workflows/python-test-publish.yml
-    detect_by: mundialis/github-workflows/.github/workflows/python-publish.yml
-    sync:
-      strategy: replace
-      match_destination: true
-
   sbom-vulnerability-scan:
     source: workflows/sbom-vulnerability-scan.yml
     detect_by: mundialis/github-workflows/.github/workflows/sbom-vulnerability-scan.yml
@@ -91,7 +83,6 @@ profiles:
       - linting
       - post-pr-reviews
       - python-publish
-      - python-test-publish
       - sbom-vulnerability-scan
       - third-party-licenses
 

@@ -168,14 +168,14 @@ See [`config/templates.yml`](config/templates.yml) for the current configuration
 | `python` | General + Post PR Reviews and Python Publish |
 | `quality` | CodeQL, Linting, Post PR Reviews |
 | `security` | CodeQL, SBOM Vulnerability Scan, Third-Party Licenses |
-| `all` | All nine templates |
+| `all` | All templates |
 
 Individual template names:
 
 ```text
 codeql                    grass-manual              grass-test
 linting                   post-pr-reviews           python-publish
-python-test-publish       sbom-vulnerability-scan   third-party-licenses
+sbom-vulnerability-scan   third-party-licenses
 ```
 
 ## What happens to existing workflows?

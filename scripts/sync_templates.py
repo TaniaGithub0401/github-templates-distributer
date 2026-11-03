@@ -413,6 +413,15 @@ def render_workflow(source, existing_path, job_name, template):
         central_inputs.pop(candidate, None)
     central_inputs.insert(0, input_key, input_value)
 
+    # Set the Dependency-Track project type based on the dependency input.
+    if "dependency-track-project-name" in central_inputs:
+        project_type = (
+            "container" if input_key == "dockerfile" else "application"
+        )
+        central_inputs["dependency-track-project-name"] = (
+            "${{ github.event.repository.name }}-" + project_type
+        )
+
     existing_inputs = existing_job.get("with") or {}
     for key in template.get("preserve_inputs", []):
         if key in existing_inputs:
