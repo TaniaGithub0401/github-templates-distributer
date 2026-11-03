@@ -375,13 +375,26 @@ def render_workflow(source, existing_path, job_name, template):
     if source_text.count(DEPENDENCY_MARKER) != 1:
         raise ValueError(f"Missing or duplicate dependency marker: {source}")
 
-    source_text = re.sub(
-        r"^[ \t]*# TEMPLATE_DEPENDENCY_INPUT[ \t]*\n",
+    # Remove template-only configuration hints before distributing.
+    pattern = (
+        r"^[ \t]*# TEMPLATE_DEPENDENCY_INPUT[ \t]*\n"
+        r"[ \t]*# TEMPLATE_OPTIONS_START[ \t]*\n"
+        r"(?:[ \t]*#.*\n)*?"
+        r"[ \t]*# TEMPLATE_OPTIONS_END[ \t]*(?:\n|$)"
+    )
+
+    source_text, replacements = re.subn(
+        pattern,
         "",
         source_text,
         count=1,
         flags=re.MULTILINE,
     )
+
+    if replacements != 1:
+        raise ValueError(
+            f"Missing or invalid dependency options block: {source}"
+        )
 
     central = yaml.load(source_text)
     existing = read_yaml(existing_path)
