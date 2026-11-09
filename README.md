@@ -165,7 +165,7 @@ See [`config/templates.yml`](config/templates.yml) for the current configuration
 | `python` | General + Post PR Reviews and Python Publish |
 | `quality` | CodeQL, Linting, Post PR Reviews |
 | `security` | CodeQL, SBOM Vulnerability Scan, Third-Party Licenses |
-| `documentation` | SECURITY.md, AGENTS.md, CONTRIBUTING.md |
+| `collaboration` | SECURITY.md, AGENTS.md, CONTRIBUTING.md |
 | `all` | All workflow templates |
 
 Individual template names:

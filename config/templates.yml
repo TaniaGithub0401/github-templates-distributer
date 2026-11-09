@@ -146,7 +146,7 @@ profiles:
       - sbom-vulnerability-scan
       - third-party-licenses
 
-  documentation:
+  collaboration:
     templates:
       - security-md
       - agents-md

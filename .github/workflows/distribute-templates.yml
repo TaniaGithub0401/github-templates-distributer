@@ -25,7 +25,7 @@ on:
           - "Python - General + Post PR Reviews and Python Publish"
           - "Quality - CodeQL, Linting, Post PR Reviews"
           - "Security - CodeQL, SBOM, Third-Party Licenses"
-          - "Documentation - SECURITY.md, AGENTS.md, CONTRIBUTING.md"
+          - "Collaboration - SECURITY.md, AGENTS.md, CONTRIBUTING.md"
           - "All - All templates"
 
       # Individual templates
@@ -147,7 +147,7 @@ jobs:
             "Python - "*) SELECTED_PROFILES+=(python) ;;
             "Quality - "*) SELECTED_PROFILES+=(quality) ;;
             "Security - "*) SELECTED_PROFILES+=(security) ;;
-            "Documentation - "*) SELECTED_PROFILES+=(documentation) ;;
+            "Collaboration - "*) SELECTED_PROFILES+=(collaboration) ;;
             "All - "*) SELECTED_PROFILES+=(all) ;;
             *)
               echo "Error: Unknown profile: $SELECTED_PROFILE"
