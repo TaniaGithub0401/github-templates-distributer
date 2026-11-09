@@ -160,12 +160,12 @@ See [`config/templates.yml`](config/templates.yml) for the current configuration
 
 | Profile | Included templates |
 | --- | --- |
-| `general` | CodeQL, Linting, SBOM Vulnerability Scan, Third-Party Licenses |
-| `grass` | General + GRASS Manual and GRASS Test |
-| `python` | General + Post PR Reviews and Python Publish |
-| `quality` | CodeQL, Linting, Post PR Reviews |
-| `security` | CodeQL, SBOM Vulnerability Scan, Third-Party Licenses |
-| `collaboration` | SECURITY.md, AGENTS.md, CONTRIBUTING.md |
+| `general` | CodeQL, Linting, SBOM Vulnerability Scan, Third-Party Licenses,  AGENTS.md, CONTRIBUTING.md |
+| `grass` | General workflows + GRASS Manual and GRASS Test |
+| `python` | General workflows + Post PR Reviews and Python Publish |
+| `quality` | CodeQL, Linting and Post PR Reviews |
+| `security` | CodeQL, SBOM Vulnerability Scan, Third-Party Licenses and SECURITY.md |
+| `collaboration` | SECURITY.md, AGENTS.md and CONTRIBUTING.md |
 | `all` | All workflow templates |
 
 Individual template names:
@@ -177,13 +177,11 @@ sbom-vulnerability-scan   third-party-licenses      security-md
 agents-md                 contributing-md
 ```
 
-### Markdown templates (Not ready for distribution)
+### Markdown templates (Official templates pending)
 
-The distributor supports `SECURITY.md`, `AGENTS.md`, and `CONTRIBUTING.md` through the `documentation` profile or individual template selection.
+The distributor supports `SECURITY.md`, `AGENTS.md`, and `CONTRIBUTING.md` through the `collaboration` profile, other configured profiles, or individual template selection.
 
 The `file` synchronization strategy creates missing files, leaves identical files unchanged, and replaces existing files entirely when their content differs. Repository-specific content is not preserved.
-
-The distribution logic was tested using local placeholder templates, which are not included in the repository. The official Markdown templates are still pending.
 
 ## What happens to existing workflows?
 

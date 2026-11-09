@@ -20,11 +20,11 @@ on:
         type: choice
         options:
           - "None - Individual templates only"
-          - "General - CodeQL, Linting, SBOM, Third-Party Licenses"
+          - "General - CodeQL, Linting, SBOM, Third-Party Licenses, AGENTS.md, CONTRIBUTING.md"
           - "GRASS - General + GRASS Manual and GRASS Test"
           - "Python - General + Post PR Reviews and Python Publish"
           - "Quality - CodeQL, Linting, Post PR Reviews"
-          - "Security - CodeQL, SBOM, Third-Party Licenses"
+          - "Security - CodeQL, SBOM, Third-Party Licenses, SECURITY.md"
           - "Collaboration - SECURITY.md, AGENTS.md, CONTRIBUTING.md"
           - "All - All templates"
 

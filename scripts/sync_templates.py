@@ -375,12 +375,14 @@ def render_workflow(source, existing_path, job_name, template):
     if source_text.count(DEPENDENCY_MARKER) != 1:
         raise ValueError(f"Missing or duplicate dependency marker: {source}")
 
-    # Remove template-only configuration hints before distributing.
+    # Remove the dependency marker and optional template-only hints.
     pattern = (
-        r"^[ \t]*# TEMPLATE_DEPENDENCY_INPUT[ \t]*\n"
+        r"^[ \t]*# TEMPLATE_DEPENDENCY_INPUT[ \t]*(?:\n|$)"
+        r"(?:"
         r"[ \t]*# TEMPLATE_OPTIONS_START[ \t]*\n"
         r"(?:[ \t]*#.*\n)*?"
         r"[ \t]*# TEMPLATE_OPTIONS_END[ \t]*(?:\n|$)"
+        r")?"
     )
 
     source_text, replacements = re.subn(
@@ -392,9 +394,7 @@ def render_workflow(source, existing_path, job_name, template):
     )
 
     if replacements != 1:
-        raise ValueError(
-            f"Missing or invalid dependency options block: {source}"
-        )
+        raise ValueError(f"Missing or invalid dependency marker: {source}")
 
     central = yaml.load(source_text)
     existing = read_yaml(existing_path)
@@ -549,7 +549,14 @@ def synchronize_templates(selected, config, templates_dir):
             raise ValueError(f"Invalid source path: {name}")
 
         if not source.is_file():
-            raise FileNotFoundError(source)
+            if template.get("optional", False):
+                print(
+                    f"Skipped optional template "
+                    f"(source not found): {template['source']}"
+                )
+                continue
+
+            raise FileNotFoundError(f"Template source not found: {source}")
 
         sync = template.get("sync", {})
         strategy = sync.get("strategy")
