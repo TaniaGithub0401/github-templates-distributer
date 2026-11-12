@@ -160,7 +160,7 @@ See [`config/templates.yml`](config/templates.yml) for the current configuration
 
 | Profile | Included templates |
 | --- | --- |
-| `general` | CodeQL, Linting, SBOM Vulnerability Scan, Third-Party Licenses,  AGENTS.md, CONTRIBUTING.md |
+| `general` | CodeQL, Linting, SBOM Vulnerability Scan, Third-Party Licenses, AGENTS.md, CONTRIBUTING.md |
 | `grass` | General workflows + GRASS Manual and GRASS Test |
 | `python` | General workflows + Post PR Reviews and Python Publish |
 | `quality` | CodeQL, Linting and Post PR Reviews |
